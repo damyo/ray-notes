@@ -15,6 +15,7 @@ import {
   WorkspaceLeaf,
   WorkspaceWindow,
   normalizePath,
+  prepareSimpleSearch,
   setIcon
 } from "obsidian";
 import {
@@ -25,6 +26,8 @@ import {
   headingEdit,
   imeFocusDelay,
   isImeInteractionPending,
+  linePrefixEdit,
+  matchesAllSearchTerms,
   restoreUnexpectedTaskPrefix,
   toggleWrapEdit
 } from "./editor";
@@ -131,10 +134,10 @@ type ElectronWindow = {
   focus(): void;
   blur(): void;
   on(name: "close", listener: (event: { preventDefault(): void }) => void): void;
-  on(name: "will-resize" | "resized", listener: () => void): void;
+  on(name: "will-resize" | "resize" | "resized", listener: () => void): void;
   on(name: "focus" | "blur", listener: () => void): void;
   off(name: "close", listener: (event: { preventDefault(): void }) => void): void;
-  off(name: "will-resize" | "resized", listener: () => void): void;
+  off(name: "will-resize" | "resize" | "resized", listener: () => void): void;
   off(name: "focus" | "blur", listener: () => void): void;
 };
 
@@ -160,9 +163,6 @@ type ElectronBridgeWindow = Window & {
       screen?: {
         getCursorScreenPoint(): { x: number; y: number };
         getDisplayMatching?(bounds: WindowBounds): { workArea: WindowBounds };
-      };
-      BrowserWindow: {
-        getAllWindows(): ElectronWindow[];
       };
       require?(module: "electron"): { globalShortcut?: ElectronGlobalShortcut };
     };
@@ -233,7 +233,12 @@ class ImeInputGuard {
   private win: Window | null = null;
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     if (event.target !== this.input) return;
-    if (!isImeInteractionPending(event.isComposing || this.composing, event.keyCode, this.compositionEndedAt, Date.now())) {
+    if (!isImeInteractionPending(
+      event.isComposing || this.composing,
+      isImeProcessKey(event),
+      this.compositionEndedAt,
+      Date.now()
+    )) {
       return;
     }
     event.stopImmediatePropagation();
@@ -267,14 +272,14 @@ class ImeInputGuard {
   isPending(event: KeyboardEvent): boolean {
     return isImeInteractionPending(
       event.isComposing || this.composing,
-      event.keyCode,
+      isImeProcessKey(event),
       this.compositionEndedAt,
       Date.now()
     );
   }
 
   isCompositionActive(event: KeyboardEvent): boolean {
-    return event.isComposing || this.composing || event.keyCode === 229;
+    return event.isComposing || this.composing || isImeProcessKey(event);
   }
 
   focusDelay(): number {
@@ -286,6 +291,12 @@ class ImeInputGuard {
     this.input.removeEventListener("compositionend", this.handleCompositionEnd);
     this.win?.removeEventListener("keydown", this.handleKeyDown, true);
   }
+}
+
+function isImeProcessKey(event: KeyboardEvent): boolean {
+  if (event.key === "Process") return true;
+  // Chromium still reports 229 for some Korean IME transitions after compositionend.
+  return (event as unknown as { keyCode: number }).keyCode === 229;
 }
 
 class ActionPanel extends FuzzySuggestModal<ActionItem> {
@@ -405,6 +416,22 @@ class NoteSwitcher extends FuzzySuggestModal<NoteItem> {
 
   getItemText(item: NoteItem): string {
     return item.searchText;
+  }
+
+  getSuggestions(query: string): FuzzyMatch<NoteItem>[] {
+    if (!query.trim()) return super.getSuggestions(query);
+    const searches = query.trim().split(/\s+/).map((term) => prepareSimpleSearch(term));
+    return this.items.filter((item) => matchesAllSearchTerms(item.searchText, query)).flatMap((item) => {
+      const matches = searches.map((search) => search(item.searchText));
+      if (matches.some((match) => !match)) return [];
+      return [{
+        item,
+        match: {
+          score: matches.reduce((score, match) => score + (match?.score ?? 0), 0),
+          matches: matches.flatMap((match) => match?.matches ?? []).sort((a, b) => a[0] - b[0])
+        }
+      }];
+    });
   }
 
   private label(item: NoteItem): string {
@@ -667,11 +694,11 @@ export default class RayNotesPlugin extends Plugin {
     this.addCommand({
       id: "open-notes-window",
       name: "Open notes window",
-      callback: () => this.openWindow()
+      callback: () => void this.openWindow()
     });
     this.addCommand({
       id: "toggle-minimal-mode",
-      name: "Toggle Minimal Mode",
+      name: "Toggle minimal mode",
       callback: () => this.toggleMinimalMode()
     });
 
@@ -761,7 +788,7 @@ export default class RayNotesPlugin extends Plugin {
         const context = this.contextFor(workspaceWindow);
         if (!context) return;
         this.activateWindow(context);
-        this.captureBounds();
+        this.captureBounds(context, true);
         this.closeFloatingUi();
         this.closeActiveLayer();
         this.windows.delete(context);
@@ -847,6 +874,20 @@ export default class RayNotesPlugin extends Plugin {
     await this.configureNativePopout(win);
     this.applyAppearance();
 
+    const nativePopout = context.nativePopout;
+    const positionTrafficLights = (): void => {
+      if (IS_MACOS && nativePopout) this.positionTrafficLights(nativePopout);
+    };
+    const repositionTrafficLights = (): void => {
+      positionTrafficLights();
+      win.requestAnimationFrame(positionTrafficLights);
+    };
+    repositionTrafficLights();
+    nativePopout?.on("focus", repositionTrafficLights);
+    nativePopout?.on("blur", repositionTrafficLights);
+    nativePopout?.on("resize", repositionTrafficLights);
+    nativePopout?.on("resized", repositionTrafficLights);
+
     const shortcutScope = new Scope(this.app.scope);
     let shortcutScopeActive = false;
     for (const key of ["p", "k", "l", "n", "d", "[", "]"]) {
@@ -873,7 +914,6 @@ export default class RayNotesPlugin extends Plugin {
       doc.body.toggleClass("ray-notes-chrome-active", active);
       if (IS_MACOS && context.nativePopout) {
         context.nativePopout.setWindowButtonVisibility?.(active && !context.minimal);
-        if (active && !context.minimal) this.positionTrafficLights(context.nativePopout);
       }
     };
     const scheduleChromeUpdate = (): void => {
@@ -948,7 +988,7 @@ export default class RayNotesPlugin extends Plugin {
       if (shouldHideWindowOnEscape({
         key: event.key,
         hasModifier: event.metaKey || event.ctrlKey || event.altKey || event.shiftKey,
-        isComposing: event.isComposing || event.keyCode === 229,
+        isComposing: event.isComposing || isImeProcessKey(event),
         hasPluginOverlay: !!context.activeLayer || !!context.floatingUi,
         hasObsidianOverlay: this.hasOpenOverlay(doc)
           || (doc !== document && this.hasOpenOverlay(document))
@@ -959,7 +999,7 @@ export default class RayNotesPlugin extends Plugin {
         this.hideWindow(context);
         return;
       }
-      if ((event.metaKey || event.ctrlKey) && (event.isComposing || event.keyCode === 229)) {
+      if ((event.metaKey || event.ctrlKey) && (event.isComposing || isImeProcessKey(event))) {
         event.stopImmediatePropagation();
         event.stopPropagation();
         return;
@@ -1044,6 +1084,10 @@ export default class RayNotesPlugin extends Plugin {
       stopPointerTracking();
       stopScrollIndicator();
       if (trafficLightFrame) win.cancelAnimationFrame(trafficLightFrame);
+      nativePopout?.off("focus", repositionTrafficLights);
+      nativePopout?.off("blur", repositionTrafficLights);
+      nativePopout?.off("resize", repositionTrafficLights);
+      nativePopout?.off("resized", repositionTrafficLights);
       deactivateShortcutScope();
       this.captureBounds();
     });
@@ -1124,7 +1168,7 @@ export default class RayNotesPlugin extends Plugin {
     this.unregisterGlobalShortcut();
     if (!this.settings.globalShortcutEnabled) return true;
     if (!this.globalShortcut) {
-      new Notice("Ray Notes: global shortcuts are unavailable in this Obsidian session");
+      new Notice("Global shortcuts are unavailable in this Obsidian session");
       return false;
     }
     const accelerator = this.settings.globalShortcut.trim() || DEFAULT_SETTINGS.globalShortcut;
@@ -1234,7 +1278,7 @@ export default class RayNotesPlugin extends Plugin {
     const original = commands.executeCommand;
     const wrapped = (command: Command, event?: Event): boolean => {
       const context = Array.from(this.windows).find((candidate) => candidate.popout.doc.hasFocus()) ?? null;
-      const executed = original.call(commands, command, event);
+      const executed = Boolean(original.call(commands, command, event));
       if (executed && command.id === "markdown:add-metadata-property" && context) {
         this.revealPropertiesAfterCommand(context);
       }
@@ -1309,16 +1353,7 @@ export default class RayNotesPlugin extends Plugin {
       win.focus();
       await new Promise<void>((resolve) => win.requestAnimationFrame(() => resolve()));
       const popoutElectron = (win as ElectronBridgeWindow).require?.("electron");
-      const mainElectron = (window as ElectronBridgeWindow).require?.("electron");
-      const browserWindow = mainElectron?.remote?.BrowserWindow;
       let nativeWindow: ElectronWindow | null | undefined = popoutElectron?.remote?.getCurrentWindow();
-      if (!nativeWindow || nativeWindow === this.mainWindow) {
-        nativeWindow = browserWindow?.getAllWindows()
-          .filter((candidate) => candidate !== this.mainWindow && typeof candidate.getBounds === "function")
-          .map((candidate) => ({ candidate, distance: this.windowDistance(candidate, win) }))
-          .filter(({ distance }) => distance <= 40)
-          .sort((a, b) => a.distance - b.distance)[0]?.candidate;
-      }
       if (!nativeWindow || nativeWindow === this.mainWindow) {
         await new Promise<void>((resolve) => win.setTimeout(resolve, 50));
         nativeWindow = popoutElectron?.remote?.getCurrentWindow();
@@ -1349,15 +1384,6 @@ export default class RayNotesPlugin extends Plugin {
     nativeWindow.setWindowButtonPosition?.(TRAFFIC_LIGHT_POSITION);
   }
 
-  private windowDistance(nativeWindow: ElectronWindow, win: Window): number {
-    const bounds = nativeWindow.getBounds?.();
-    if (!bounds) return Number.POSITIVE_INFINITY;
-    return Math.abs(bounds.x - win.screenX)
-      + Math.abs(bounds.y - win.screenY)
-      + Math.abs(bounds.width - win.outerWidth)
-      + Math.abs(bounds.height - win.outerHeight);
-  }
-
   private isPointerInsideWindow(
     win: Window,
     doc: Document,
@@ -1384,12 +1410,12 @@ export default class RayNotesPlugin extends Plugin {
     );
     minimalButton.addClass("ray-notes-minimal-mode-button");
     this.addToolbarButton(topActions, "command", "Action Panel", ["⌘", "K"], () => this.openActionPanel());
-    this.addToolbarButton(topActions, "notebook", "Browse Notes", ["⌘", "P"], () => this.openSwitcher());
+    this.addToolbarButton(topActions, "notebook", "Browse Notes", ["⌘", "P"], () => void this.openSwitcher());
     this.addToolbarButton(topActions, "plus", "Create Note", ["⌘", "N"], () => void this.createAndOpenNote());
     const closePropertiesButton = this.addToolbarButton(
       topActions,
       "x",
-      "Close File Properties",
+      "Close file properties",
       [],
       () => this.closeActiveLayer(context)
     );
@@ -1419,7 +1445,7 @@ export default class RayNotesPlugin extends Plugin {
       this.workspacePinButton = this.addToolbarButton(
         bottomTrailing,
         "layers",
-        "Show on All Spaces",
+        "Show on all spaces",
         [],
         () => void this.toggleWorkspacePin(context)
       );
@@ -1433,7 +1459,7 @@ export default class RayNotesPlugin extends Plugin {
     const doc = context.popout.doc;
     const metadata = context.leaf.view.containerEl.querySelector<HTMLElement>(".metadata-container");
     if (!metadata) {
-      new Notice("Ray Notes: file properties are not available in this view");
+      new Notice("File properties are not available in this view");
       return;
     }
 
@@ -1441,7 +1467,7 @@ export default class RayNotesPlugin extends Plugin {
     const originalNext = metadata.nextSibling;
     const overlay = doc.body.createDiv("ray-notes-properties-overlay");
     overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", "File Properties");
+    overlay.setAttribute("aria-label", "File properties");
     overlay.setAttribute("aria-modal", "true");
     const panel = overlay.createDiv("ray-notes-properties-panel");
 
@@ -1542,7 +1568,7 @@ export default class RayNotesPlugin extends Plugin {
     const preview = context.popout.doc.body.createDiv("ray-notes-minimal-card");
     preview.tabIndex = 0;
     preview.setAttribute("role", "button");
-    preview.setAttribute("aria-label", "Restore Ray Notes");
+    preview.setAttribute("aria-label", "Restore note window");
     preview.createDiv("ray-notes-minimal-title");
     preview.createDiv("ray-notes-minimal-body");
     const restore = (): void => this.toggleMinimalMode(context);
@@ -1694,8 +1720,12 @@ export default class RayNotesPlugin extends Plugin {
     const editor = this.getEditor();
     if (!editor) return;
     const cursor = editor.getCursor();
-    editor.replaceRange(prefix, { line: cursor.line, ch: 0 });
-    editor.setCursor({ line: cursor.line, ch: cursor.ch + prefix.length });
+    const edit = linePrefixEdit(editor.getLine(cursor.line), cursor.ch, prefix);
+    editor.replaceRange(edit.prefix, { line: cursor.line, ch: 0 }, {
+      line: cursor.line,
+      ch: edit.replaceEnd
+    });
+    editor.setCursor({ line: cursor.line, ch: edit.cursorCh });
     editor.focus();
   }
 
@@ -1825,7 +1855,7 @@ export default class RayNotesPlugin extends Plugin {
     if (!editor) return;
     const selectedText = editor.getSelection();
     if (!selectedText) {
-      new Notice("Ray Notes: select text before adding a link");
+      new Notice("Select text before adding a link");
       return;
     }
 
@@ -1988,7 +2018,7 @@ export default class RayNotesPlugin extends Plugin {
 
   private createFloatingUi(doc: Document, className: string): HTMLElement {
     const context = this.activeWindow;
-    if (!context) return doc.createElement("div");
+    if (!context) throw new Error("No active Ray Notes window");
     this.closeActiveLayer(context);
     this.closeFloatingUi(context);
     const floating = doc.body.createDiv(`ray-notes-popover ${className}`);
@@ -2311,7 +2341,7 @@ export default class RayNotesPlugin extends Plugin {
   private async openSwitcher(): Promise<void> {
     const files = this.getFiles();
     if (!files.length) {
-      new Notice("Ray Notes: no notes found");
+      new Notice("No notes found");
       return;
     }
     const source = this.activeWindow;
@@ -2458,7 +2488,7 @@ export default class RayNotesPlugin extends Plugin {
     const clipboard = this.popout?.win.navigator.clipboard;
     if (!file || !clipboard) return;
     await clipboard.writeText(await this.app.vault.read(file));
-    new Notice("Ray Notes: note copied as Markdown");
+    new Notice("Note copied as Markdown");
   }
 
   private async copyDeeplink(): Promise<void> {
@@ -2467,7 +2497,7 @@ export default class RayNotesPlugin extends Plugin {
     if (!file || !clipboard) return;
     const url = `obsidian://open?vault=${encodeURIComponent(this.app.vault.getName())}&file=${encodeURIComponent(file.path)}`;
     await clipboard.writeText(url);
-    new Notice("Ray Notes: deeplink copied");
+    new Notice("Deeplink copied");
   }
 
   private toggleFormatBar(): void {
@@ -2575,6 +2605,7 @@ export default class RayNotesPlugin extends Plugin {
       this.updateDerivedTitle(context.leaf.view.editor, context);
       this.updateMinimalPreview(context);
     }
+    if (IS_MACOS && context.nativePopout) this.positionTrafficLights(context.nativePopout);
     const key = this.noteKey(file.path);
     if (context.primary) this.settings.lastFile = key;
     this.settings.lastOpened[key] = Date.now();
@@ -2662,11 +2693,16 @@ export default class RayNotesPlugin extends Plugin {
     }, 300);
   }
 
-  private captureBounds(): void {
-    const context = this.activeWindow;
+  private captureBounds(
+    context = this.activeWindow,
+    includeSecondary = false
+  ): void {
     const win = context?.popout.win;
-    if (!win || !context.primary || context.minimal) return;
-    this.settings.bounds = {
+    if (!win || (!context.primary && !includeSecondary)) return;
+    const file = context.leaf.view instanceof MarkdownView ? context.leaf.view.file : null;
+    if (file) this.settings.lastFile = this.noteKey(file.path);
+    const bounds = context.minimal ? context.normalBounds : null;
+    this.settings.bounds = bounds ?? {
       x: win.screenX,
       y: win.screenY,
       width: win.outerWidth,
@@ -2703,7 +2739,7 @@ class RayNotesSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl)
       .setName("Notes folder")
-      .setDesc("Ray Notes only lists and creates Markdown files in this folder.")
+      .setDesc("Only list and create Markdown files in this folder.")
       .addText((text) =>
         text
           .setPlaceholder("Ray Notes")
@@ -2716,7 +2752,7 @@ class RayNotesSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl)
       .setName("Always on top")
-      .setDesc("Default Always on Top state for newly created Ray Notes windows.")
+      .setDesc("Keep each newly created note above other apps.")
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.alwaysOnTop).onChange(async (value) => {
           this.plugin.settings.alwaysOnTop = value;
@@ -2726,8 +2762,8 @@ class RayNotesSettingTab extends PluginSettingTab {
 
     if (IS_MACOS) {
       new Setting(this.containerEl)
-        .setName("Show on All Spaces")
-        .setDesc("Default All Spaces state for newly created Ray Notes windows.")
+        .setName("Show on all spaces")
+        .setDesc("Display each newly created note on every macOS space.")
         .addToggle((toggle) =>
           toggle.setValue(this.plugin.settings.visibleOnAllWorkspaces).onChange(async (value) => {
             this.plugin.settings.visibleOnAllWorkspaces = value;
@@ -2738,7 +2774,7 @@ class RayNotesSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl)
       .setName("Enable global shortcut")
-      .setDesc("Show or hide the primary Ray Notes window from any app.")
+      .setDesc("Show or hide the primary note window from any app.")
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.globalShortcutEnabled).onChange(async (value) => {
           this.plugin.settings.globalShortcutEnabled = value;
@@ -2846,7 +2882,7 @@ class RayNotesSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl)
       .setName("Translucent window")
-      .setDesc("Use macOS vibrancy and a translucent background in Ray Notes windows.")
+      .setDesc("Use translucent backgrounds and macOS vibrancy in notes.")
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.translucentWindow).onChange(async (value) => {
           this.plugin.settings.translucentWindow = value;
@@ -2857,7 +2893,7 @@ class RayNotesSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl)
       .setName("Folder note click")
-      .setDesc("Choose where notes from the Ray Notes folder open.")
+      .setDesc("Choose where notes from the selected folder open.")
       .addDropdown((dropdown) =>
         dropdown
           .addOption("default", "Open in Obsidian")
@@ -2872,7 +2908,7 @@ class RayNotesSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl)
       .setName("Minimize main window")
-      .setDesc("Minimize the main Obsidian window when Ray Notes opens.")
+      .setDesc("Minimize the main Obsidian window when opening a note window.")
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.minimizeMainWindow).onChange(async (value) => {
           this.plugin.settings.minimizeMainWindow = value;

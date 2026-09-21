@@ -490,8 +490,10 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view :not(pre) >
 
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6 .cm-formatting-code {
+  padding-block: 0;
   padding-inline: 0;
   border-radius: 0;
+  line-height: inherit;
 }
 
 /* User-tunable note format: callouts. */

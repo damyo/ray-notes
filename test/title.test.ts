@@ -9,6 +9,8 @@ import {
   headingEdit,
   imeFocusDelay,
   isImeInteractionPending,
+  linePrefixEdit,
+  matchesAllSearchTerms,
   restoreUnexpectedTaskPrefix,
   toggleWrapEdit
 } from "../src/editor.ts";
@@ -144,6 +146,21 @@ test("records blockquote depth on the complete quote line", () => {
 test("inserts and replaces heading levels without losing the cursor", () => {
   assert.deepEqual(headingEdit("Notes", 5, 2), { prefix: "## ", replaceEnd: 0, cursorCh: 8 });
   assert.deepEqual(headingEdit("# Notes", 7, 3), { prefix: "### ", replaceEnd: 2, cursorCh: 9 });
+  assert.deepEqual(headingEdit("## Notes", 8, 2), { prefix: "", replaceEnd: 3, cursorCh: 5 });
+});
+
+test("toggles blockquote and list prefixes instead of nesting them", () => {
+  assert.deepEqual(linePrefixEdit("Text", 4, "> "), { prefix: "> ", replaceEnd: 0, cursorCh: 6 });
+  assert.deepEqual(linePrefixEdit("> Text", 6, "> "), { prefix: "", replaceEnd: 2, cursorCh: 4 });
+  assert.deepEqual(linePrefixEdit("- [ ] Task", 10, "- [ ] "), {
+    prefix: "", replaceEnd: 6, cursorCh: 4
+  });
+});
+
+test("requires every Browse Notes search term", () => {
+  assert.equal(matchesAllSearchTerms("ChatGPT payment history", "chatgpt payment history"), true);
+  assert.equal(matchesAllSearchTerms("ChatGPT payment", "chatgpt payment history"), false);
+  assert.equal(matchesAllSearchTerms("ChatGPT 결제 내역", "chatgpt 결제 내역"), true);
 });
 
 test("finds the active code fence and callout header", () => {
@@ -248,10 +265,10 @@ test("stores note paths relative to the configured notes folder", () => {
 });
 
 test("defers overlay shortcuts while IME composition is settling", () => {
-  assert.equal(isImeInteractionPending(true, 27, 0, 1000), true);
-  assert.equal(isImeInteractionPending(false, 229, 0, 1000), true);
-  assert.equal(isImeInteractionPending(false, 27, 950, 1000), true);
-  assert.equal(isImeInteractionPending(false, 27, 800, 1000), false);
+  assert.equal(isImeInteractionPending(true, false, 0, 1000), true);
+  assert.equal(isImeInteractionPending(false, true, 0, 1000), true);
+  assert.equal(isImeInteractionPending(false, false, 950, 1000), true);
+  assert.equal(isImeInteractionPending(false, false, 800, 1000), false);
 });
 
 test("defers editor focus until IME composition has settled", () => {

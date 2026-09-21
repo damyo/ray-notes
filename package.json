@@ -1,10 +1,11 @@
 {
   "name": "ray-notes",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "lint": "eslint .",
     "test": "node --test test/*.test.ts"
   },
   "devDependencies": {
@@ -12,6 +13,8 @@
     "@codemirror/view": "6.38.6",
     "@types/node": "^24.3.0",
     "esbuild": "^0.25.9",
+    "eslint": "^9.39.5",
+    "eslint-plugin-obsidianmd": "^0.4.2",
     "obsidian": "latest",
     "typescript": "^5.9.2"
   }

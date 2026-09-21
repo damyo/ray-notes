@@ -71,12 +71,31 @@ export function headingEdit(line: string, cursorCh: number, level: number): {
   cursorCh: number;
 } {
   const current = line.match(/^#{1,6}\s+/)?.[0] ?? "";
-  const prefix = `${"#".repeat(level)} `;
+  const requested = `${"#".repeat(level)} `;
+  const prefix = current === requested ? "" : requested;
   return {
     prefix,
     replaceEnd: current.length,
     cursorCh: Math.max(prefix.length, cursorCh - current.length + prefix.length)
   };
+}
+
+export function linePrefixEdit(line: string, cursorCh: number, prefix: string): {
+  prefix: string;
+  replaceEnd: number;
+  cursorCh: number;
+} {
+  const remove = line.startsWith(prefix);
+  return {
+    prefix: remove ? "" : prefix,
+    replaceEnd: remove ? prefix.length : 0,
+    cursorCh: Math.max(0, cursorCh + (remove ? -prefix.length : prefix.length))
+  };
+}
+
+export function matchesAllSearchTerms(text: string, query: string): boolean {
+  const haystack = text.toLocaleLowerCase();
+  return query.trim().toLocaleLowerCase().split(/\s+/).every((term) => haystack.includes(term));
 }
 
 export function codeFenceOpeningLine(lines: string[], cursorLine: number): number | null {
@@ -99,13 +118,13 @@ export function calloutHeaderLine(lines: string[], cursorLine: number): number |
 
 export function isImeInteractionPending(
   isComposing: boolean,
-  keyCode: number,
+  isProcessKey: boolean,
   compositionEndedAt: number,
   now: number
 ): boolean {
   const sinceCompositionEnd = now - compositionEndedAt;
   return isComposing
-    || keyCode === 229
+    || isProcessKey
     || (compositionEndedAt > 0 && sinceCompositionEnd >= 0 && sinceCompositionEnd < 120);
 }
 
