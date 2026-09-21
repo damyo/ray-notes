@@ -139,8 +139,8 @@ type ElectronWindow = {
 };
 
 type ObsidianCommandManager = {
-  executeCommand(command: Command, event?: Event): boolean;
-  executeCommandById(id: string, event?: Event): boolean;
+  executeCommand: (command: Command, event?: Event) => boolean;
+  executeCommandById: (id: string, event?: Event) => boolean;
 };
 
 type ElectronApp = {
@@ -508,11 +508,11 @@ class NoteSwitcher extends FuzzySuggestModal<NoteItem> {
     }
   }
 
-  private bindRowAction(button: HTMLButtonElement, action: () => void): void {
+  private bindRowAction(button: HTMLButtonElement, action: () => void | Promise<void>): void {
     button.addEventListener("pointerdown", consumeLayerSelectionEvent);
     button.addEventListener("click", (event) => {
       consumeLayerSelectionEvent(event);
-      action();
+      void action();
     });
   }
 }
@@ -658,15 +658,14 @@ export default class RayNotesPlugin extends Plugin {
       if (!gaps.some(Boolean) || children.length !== gaps.length + 1) return;
       gaps.forEach((extraLines, index) => {
         if (!extraLines) return;
-        const spacer = element.ownerDocument.createElement("div");
-        spacer.className = "ray-notes-reading-blank-lines";
+        const spacer = element.createDiv("ray-notes-reading-blank-lines");
         spacer.style.setProperty("--ray-notes-extra-blank-lines", String(extraLines));
         children[index + 1].before(spacer);
       });
     });
 
     this.addCommand({
-      id: "open-ray-notes",
+      id: "open-notes-window",
       name: "Open notes window",
       callback: () => this.openWindow()
     });
@@ -815,7 +814,7 @@ export default class RayNotesPlugin extends Plugin {
           height: this.settings.bounds.height
         }
       });
-      const popout = leaf.getContainer() as WorkspaceWindow;
+      const popout = leaf.getContainer();
       const context = this.createWindowContext(leaf, popout, true);
       this.windows.add(context);
       this.activateWindow(context);
@@ -1015,7 +1014,7 @@ export default class RayNotesPlugin extends Plugin {
       } else if (!event.altKey && !event.shiftKey && key === "k") {
         run(() => this.openActionPanel());
       } else if (!event.altKey && !event.shiftKey && key === "p") {
-        run(() => this.openSwitcher());
+        run(() => void this.openSwitcher());
       } else if (!event.altKey && !event.shiftKey && key === "n") {
         run(() => void this.createAndOpenNote());
       } else if (!event.altKey && !event.shiftKey && code === "Semicolon") {
@@ -1052,10 +1051,8 @@ export default class RayNotesPlugin extends Plugin {
 
   private createScrollIndicator(doc: Document, win: Window): () => void {
     doc.querySelector(".ray-notes-scrollbar")?.remove();
-    const track = doc.createElement("div");
-    track.className = "ray-notes-scrollbar";
+    const track = doc.body.createDiv("ray-notes-scrollbar");
     const thumb = track.createDiv("ray-notes-scrollbar-thumb");
-    doc.body.append(track);
 
     let frame = 0;
     let hideTimer = 0;
@@ -1290,7 +1287,7 @@ export default class RayNotesPlugin extends Plugin {
   }
 
   private async adoptLeaf(leaf: WorkspaceLeaf, primary = true): Promise<void> {
-    const popout = leaf.getContainer() as WorkspaceWindow;
+    const popout = leaf.getContainer();
     const context = this.createWindowContext(leaf, popout, primary);
     this.windows.add(context);
     this.activateWindow(context);
@@ -1317,7 +1314,7 @@ export default class RayNotesPlugin extends Plugin {
       let nativeWindow: ElectronWindow | null | undefined = popoutElectron?.remote?.getCurrentWindow();
       if (!nativeWindow || nativeWindow === this.mainWindow) {
         nativeWindow = browserWindow?.getAllWindows()
-          .filter((candidate) => candidate !== this.mainWindow && candidate.getBounds)
+          .filter((candidate) => candidate !== this.mainWindow && typeof candidate.getBounds === "function")
           .map((candidate) => ({ candidate, distance: this.windowDistance(candidate, win) }))
           .filter(({ distance }) => distance <= 40)
           .sort((a, b) => a.distance - b.distance)[0]?.candidate;
@@ -1376,16 +1373,12 @@ export default class RayNotesPlugin extends Plugin {
   private createChrome(doc: Document): void {
     const context = this.activeWindow;
     if (!context) return;
-    const top = doc.createElement("div");
-    top.className = "ray-notes-toolbar ray-notes-toolbar-top";
+    const top = doc.body.createDiv("ray-notes-toolbar ray-notes-toolbar-top");
 
-    this.titleEl = doc.createElement("div");
-    this.titleEl.className = "ray-notes-title";
+    this.titleEl = top.createDiv("ray-notes-title");
     this.titleEl.textContent = "Untitled";
-    top.append(this.titleEl);
 
-    const topActions = doc.createElement("div");
-    topActions.className = "ray-notes-toolbar-actions";
+    const topActions = top.createDiv("ray-notes-toolbar-actions");
     const minimalButton = this.addToolbarButton(
       topActions, "minimize-2", "Minimal Mode", [], () => this.toggleMinimalMode(context)
     );
@@ -1401,10 +1394,7 @@ export default class RayNotesPlugin extends Plugin {
       () => this.closeActiveLayer(context)
     );
     closePropertiesButton.addClass("ray-notes-properties-close");
-    top.append(topActions);
-
-    const bottom = doc.createElement("div");
-    bottom.className = "ray-notes-toolbar ray-notes-toolbar-bottom";
+    const bottom = doc.body.createDiv("ray-notes-toolbar ray-notes-toolbar-bottom");
     const bottomMain = bottom.createDiv("ray-notes-toolbar-main");
     const heading = this.addToolbarButton(bottomMain, "heading", "Heading", [], () => this.openHeadingMenu(heading));
     this.addMenuCaret(heading);
@@ -1436,8 +1426,6 @@ export default class RayNotesPlugin extends Plugin {
       this.workspacePinButton.addClass("ray-notes-spaces-button");
       this.updateToggleButton(this.workspacePinButton, context.visibleOnAllWorkspaces);
     }
-
-    doc.body.append(top, bottom);
   }
 
   private openPropertiesOverlay(context = this.activeWindow): void {
@@ -1630,9 +1618,10 @@ export default class RayNotesPlugin extends Plugin {
     shortcut: string[],
     onClick: () => void
   ): HTMLButtonElement {
-    const button = parent.ownerDocument.createElement("button");
-    button.className = "ray-notes-toolbar-button";
-    button.type = "button";
+    const button = parent.createEl("button", {
+      cls: "ray-notes-toolbar-button",
+      attr: { type: "button" }
+    });
     setIcon(button, icon);
     const getLabel = (): string => typeof label === "function" ? label() : label;
     const activateOwner = (): void => {
@@ -1670,7 +1659,6 @@ export default class RayNotesPlugin extends Plugin {
       this.closeTooltip();
       onClick();
     });
-    parent.append(button);
     return button;
   }
 
@@ -1987,11 +1975,9 @@ export default class RayNotesPlugin extends Plugin {
   ): void {
     if (this.floatingUi && !this.floatingUi.hasClass("ray-notes-tooltip")) return;
     this.closeTooltip();
-    const tooltip = anchor.ownerDocument.createElement("div");
-    tooltip.className = "ray-notes-tooltip";
+    const tooltip = anchor.ownerDocument.body.createDiv("ray-notes-tooltip");
     tooltip.createSpan({ text: label });
     appendKeycaps(tooltip, shortcut);
-    anchor.ownerDocument.body.append(tooltip);
     this.floatingUi = tooltip;
     this.positionFloating(tooltip, anchor.getBoundingClientRect(), placement);
   }
@@ -2005,9 +1991,7 @@ export default class RayNotesPlugin extends Plugin {
     if (!context) return doc.createElement("div");
     this.closeActiveLayer(context);
     this.closeFloatingUi(context);
-    const floating = doc.createElement("div");
-    floating.className = `ray-notes-popover ${className}`;
-    doc.body.append(floating);
+    const floating = doc.body.createDiv(`ray-notes-popover ${className}`);
     this.floatingUi = floating;
 
     const closeOnOutside = (event: PointerEvent): void => {
@@ -2196,7 +2180,7 @@ export default class RayNotesPlugin extends Plugin {
         icon: "notebook",
         label: "Browse Notes",
         shortcut: ["⌘", "P"],
-        run: () => this.openSwitcher()
+        run: () => void this.openSwitcher()
       },
       {
         icon: "panels-top-left",
@@ -2426,7 +2410,7 @@ export default class RayNotesPlugin extends Plugin {
       y: bounds.y,
       size: { width: bounds.width, height: bounds.height }
     });
-    const popout = leaf.getContainer() as WorkspaceWindow;
+    const popout = leaf.getContainer();
     const context = this.createWindowContext(leaf, popout, false);
     this.windows.add(context);
     this.activateWindow(context);
