@@ -1,0 +1,140 @@
+body.ray-notes-window {
+  --header-height: 0px;
+  --ray-notes-toolbar-height: 56px;
+  --ray-notes-toolbar-fg: color-mix(in srgb, var(--text-normal) 72%, transparent);
+  background: var(--background-primary);
+}
+
+body.ray-notes-window .titlebar,
+body.ray-notes-window .workspace-ribbon,
+body.ray-notes-window .workspace-tab-header-container,
+body.ray-notes-window .view-header,
+body.ray-notes-window .status-bar,
+body.ray-notes-window .inline-title {
+  display: none !important;
+}
+
+body.ray-notes-window .workspace,
+body.ray-notes-window .workspace-split,
+body.ray-notes-window .workspace-tabs,
+body.ray-notes-window .workspace-tab-container,
+body.ray-notes-window .workspace-leaf,
+body.ray-notes-window .workspace-leaf-content {
+  height: 100%;
+  background: transparent;
+}
+
+body.ray-notes-window .workspace-leaf-content[data-type="markdown"] {
+  border: 0;
+}
+
+body.ray-notes-window .markdown-source-view.mod-cm6 .cm-editor,
+body.ray-notes-window .markdown-source-view.mod-cm6 .cm-scroller,
+body.ray-notes-window .markdown-preview-view {
+  background: transparent;
+}
+
+body.ray-notes-window .markdown-source-view.mod-cm6 .cm-scroller,
+body.ray-notes-window .markdown-preview-view {
+  padding-top: calc(var(--ray-notes-toolbar-height) + 18px);
+  padding-bottom: calc(var(--ray-notes-toolbar-height) + 18px);
+}
+
+body.ray-notes-window .cm-content > .cm-line:only-child:empty::before {
+  content: "Start writing…";
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.ray-notes-toolbar {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  color: var(--ray-notes-toolbar-fg);
+  user-select: none;
+  animation: ray-notes-toolbar-in 140ms ease-out;
+}
+
+.ray-notes-toolbar-top {
+  inset: 0 0 auto;
+  height: var(--ray-notes-toolbar-height);
+  padding: 0 16px 0 112px;
+  -webkit-app-region: drag;
+}
+
+.ray-notes-title {
+  position: absolute;
+  left: 50%;
+  max-width: 42%;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.ray-notes-toolbar-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.ray-notes-toolbar-bottom {
+  inset: auto 0 0;
+  justify-content: center;
+  gap: 4px;
+  min-height: var(--ray-notes-toolbar-height);
+  padding: 8px 24px;
+  overflow-x: auto;
+  background: linear-gradient(to top, var(--background-primary) 62%, transparent);
+  scrollbar-width: none;
+}
+
+.ray-notes-toolbar-bottom::-webkit-scrollbar {
+  display: none;
+}
+
+.ray-notes-toolbar-button {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  padding: 6px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  -webkit-app-region: no-drag;
+  transition: color 100ms ease, background-color 100ms ease, transform 100ms ease;
+}
+
+.ray-notes-toolbar-button:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+  transform: translateY(-1px);
+}
+
+.ray-notes-toolbar-button:active {
+  transform: translateY(0) scale(0.94);
+}
+
+@keyframes ray-notes-toolbar-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ray-notes-toolbar,
+  .ray-notes-toolbar-button {
+    animation: none;
+    transition: none;
+  }
+}

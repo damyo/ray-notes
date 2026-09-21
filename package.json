@@ -1,0 +1,17 @@
+{
+  "name": "ray-notes",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "test": "node --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "builtin-modules": "^5.0.0",
+    "esbuild": "^0.25.9",
+    "obsidian": "latest",
+    "typescript": "^5.9.2"
+  }
+}
