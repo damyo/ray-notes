@@ -1,9 +1,12 @@
 {
   "id": "ray-notes",
   "name": "Ray Notes",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "minAppVersion": "1.7.2",
-  "description": "A compact, always-on-top notes window powered by Obsidian's editor.",
+  "description": "Open compact, always-on-top note windows powered by Obsidian's editor.",
   "author": "pnz002",
+  "authorUrl": "https://github.com/damyo",
+  "fundingUrl": "https://ko-fi.com/damyo",
+  "helpUrl": "https://github.com/damyo/ray-notes/issues",
   "isDesktopOnly": true
 }

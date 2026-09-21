@@ -1,6 +1,6 @@
 {
   "name": "ray-notes",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "node esbuild.config.mjs",
@@ -8,6 +8,8 @@
     "test": "node --test test/*.test.ts"
   },
   "devDependencies": {
+    "@codemirror/state": "6.5.0",
+    "@codemirror/view": "6.38.6",
     "@types/node": "^24.3.0",
     "builtin-modules": "^5.0.0",
     "esbuild": "^0.25.9",
