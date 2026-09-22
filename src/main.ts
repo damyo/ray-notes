@@ -10,6 +10,7 @@ import {
   PluginSettingTab,
   Scope,
   Setting,
+  type SettingDefinitionItem,
   TFile,
   TFolder,
   WorkspaceLeaf,
@@ -125,6 +126,7 @@ type ElectronWindow = {
   ): void;
   isVisibleOnAllWorkspaces?(): boolean;
   setWindowButtonPosition?(position: { x: number; y: number } | null): void;
+  getWindowButtonPosition?(): { x: number; y: number } | null;
   setWindowButtonVisibility?(visible: boolean): void;
   hide(): void;
   isVisible?(): boolean;
@@ -215,8 +217,12 @@ interface RayNotesWindowContext {
   formatBarHidden: boolean;
   contentProtected: boolean;
   floatingUi: HTMLElement | null;
+  floatingAnchor: HTMLElement | null;
   floatingCleanup: (() => void) | null;
   activeLayer: Layer | null;
+  propertiesHost: HTMLElement | null;
+  propertiesResizeObserver: ResizeObserver | null;
+  propertiesVisible: boolean;
   escapeSuppressedUntil: number;
   minimalEl: HTMLElement | null;
   minimal: boolean;
@@ -623,8 +629,12 @@ export default class RayNotesPlugin extends Plugin {
       formatBarHidden: false,
       contentProtected: false,
       floatingUi: null,
+      floatingAnchor: null,
       floatingCleanup: null,
       activeLayer: null,
+      propertiesHost: null,
+      propertiesResizeObserver: null,
+      propertiesVisible: false,
       escapeSuppressedUntil: 0,
       minimalEl: null,
       minimal: false,
@@ -875,12 +885,49 @@ export default class RayNotesPlugin extends Plugin {
     this.applyAppearance();
 
     const nativePopout = context.nativePopout;
+    const topBar = doc.querySelector<HTMLElement>(".ray-notes-toolbar-top");
+    let windowDrag: { bounds: WindowBounds; start: { x: number; y: number } } | null = null;
+    topBar?.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || (event.target as HTMLElement).closest?.(".ray-notes-toolbar-actions")) return;
+      const bounds = nativePopout?.getBounds?.();
+      if (!bounds) return;
+      windowDrag = { bounds, start: { x: event.screenX, y: event.screenY } };
+      topBar.setPointerCapture(event.pointerId);
+    });
+    topBar?.addEventListener("pointermove", (event) => {
+      if (!windowDrag) return;
+      const bounds = draggedWindowBounds(windowDrag.bounds, windowDrag.start, {
+        x: event.screenX,
+        y: event.screenY
+      });
+      if (bounds) nativePopout?.setBounds?.(bounds);
+    });
+    topBar?.addEventListener("pointerup", () => { windowDrag = null; });
+    topBar?.addEventListener("pointercancel", () => { windowDrag = null; });
+    const searchObserver = new MutationObserver(() => {
+      const search = doc.querySelector<HTMLElement>(".document-search-container");
+      if (context.propertiesVisible && search?.getClientRects().length) {
+        this.hideInlineProperties(context);
+      }
+    });
+    searchObserver.observe(doc.body, { childList: true, subtree: true });
+    let trafficLightPositionFrame = 0;
+    let trafficLightPositionTimer = 0;
     const positionTrafficLights = (): void => {
       if (IS_MACOS && nativePopout) this.positionTrafficLights(nativePopout);
     };
     const repositionTrafficLights = (): void => {
-      positionTrafficLights();
-      win.requestAnimationFrame(positionTrafficLights);
+      if (trafficLightPositionFrame) win.cancelAnimationFrame(trafficLightPositionFrame);
+      if (trafficLightPositionTimer) win.clearTimeout(trafficLightPositionTimer);
+      if (IS_MACOS && nativePopout) this.positionTrafficLights(nativePopout, true);
+      trafficLightPositionFrame = win.requestAnimationFrame(() => {
+        trafficLightPositionFrame = 0;
+        positionTrafficLights();
+        trafficLightPositionTimer = win.setTimeout(() => {
+          trafficLightPositionTimer = 0;
+          positionTrafficLights();
+        }, 50);
+      });
     };
     repositionTrafficLights();
     nativePopout?.on("focus", repositionTrafficLights);
@@ -890,7 +937,7 @@ export default class RayNotesPlugin extends Plugin {
 
     const shortcutScope = new Scope(this.app.scope);
     let shortcutScopeActive = false;
-    for (const key of ["p", "k", "l", "n", "d", "[", "]"]) {
+    for (const key of ["p", "k", "l", "n", "d", "[", "]", ";"]) {
       shortcutScope.register(["Mod"], key, () => false);
     }
     const activateShortcutScope = (): void => {
@@ -913,7 +960,8 @@ export default class RayNotesPlugin extends Plugin {
       chromeActive = active;
       doc.body.toggleClass("ray-notes-chrome-active", active);
       if (IS_MACOS && context.nativePopout) {
-        context.nativePopout.setWindowButtonVisibility?.(active && !context.minimal);
+        this.setTrafficLightsVisible(context.nativePopout, active && !context.minimal);
+        repositionTrafficLights();
       }
     };
     const scheduleChromeUpdate = (): void => {
@@ -973,6 +1021,13 @@ export default class RayNotesPlugin extends Plugin {
         this.closeFloatingUi(context);
         return;
       }
+      if (bareEscape && context.propertiesVisible) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        this.hideInlineProperties(context);
+        return;
+      }
       if (bareEscape && (this.closeOpenDocumentSearch(doc)
         || (doc !== document && this.closeOpenDocumentSearch(document)))) {
         event.preventDefault();
@@ -1003,6 +1058,9 @@ export default class RayNotesPlugin extends Plugin {
         event.stopImmediatePropagation();
         event.stopPropagation();
         return;
+      }
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.code === "KeyF") {
+        this.hideInlineProperties(context);
       }
       if (!(event.metaKey || event.ctrlKey)) return;
       const key = event.key.toLowerCase();
@@ -1058,7 +1116,7 @@ export default class RayNotesPlugin extends Plugin {
       } else if (!event.altKey && !event.shiftKey && key === "n") {
         run(() => void this.createAndOpenNote());
       } else if (!event.altKey && !event.shiftKey && code === "Semicolon") {
-        run(() => this.commandManager().executeCommandById("markdown:add-metadata-property", event));
+        run(() => this.toggleInlineProperties(context));
       } else if (!event.altKey && !event.shiftKey && key === "d") {
         run(() => void this.duplicateCurrentNote());
       } else if (!event.altKey && code === "Equal") {
@@ -1083,7 +1141,12 @@ export default class RayNotesPlugin extends Plugin {
       this.activateWindow(context);
       stopPointerTracking();
       stopScrollIndicator();
+      context.propertiesResizeObserver?.disconnect();
+      context.propertiesResizeObserver = null;
+      searchObserver.disconnect();
       if (trafficLightFrame) win.cancelAnimationFrame(trafficLightFrame);
+      if (trafficLightPositionFrame) win.cancelAnimationFrame(trafficLightPositionFrame);
+      if (trafficLightPositionTimer) win.clearTimeout(trafficLightPositionTimer);
       nativePopout?.off("focus", repositionTrafficLights);
       nativePopout?.off("blur", repositionTrafficLights);
       nativePopout?.off("resize", repositionTrafficLights);
@@ -1277,10 +1340,15 @@ export default class RayNotesPlugin extends Plugin {
     const commands = this.commandManager();
     const original = commands.executeCommand;
     const wrapped = (command: Command, event?: Event): boolean => {
-      const context = Array.from(this.windows).find((candidate) => candidate.popout.doc.hasFocus()) ?? null;
+      const eventDoc = (event?.target as Node | null)?.ownerDocument ?? null;
+      const context = Array.from(this.windows).find((candidate) =>
+        candidate.popout.doc === eventDoc || candidate.popout.doc.hasFocus()
+      ) ?? null;
       const executed = Boolean(original.call(commands, command, event));
       if (executed && command.id === "markdown:add-metadata-property" && context) {
-        this.revealPropertiesAfterCommand(context);
+        context.propertiesVisible = true;
+        this.closeOpenDocumentSearch(context.popout.doc);
+        this.syncInlineProperties(context);
       }
       return executed;
     };
@@ -1290,17 +1358,72 @@ export default class RayNotesPlugin extends Plugin {
     });
   }
 
-  private revealPropertiesAfterCommand(context: RayNotesWindowContext, attempt = 0): void {
+  private toggleInlineProperties(context: RayNotesWindowContext): void {
+    if (context.propertiesVisible) {
+      this.hideInlineProperties(context);
+      return;
+    }
+    this.closeOpenDocumentSearch(context.popout.doc);
+    const metadata = context.leaf.view instanceof MarkdownView
+      ? context.leaf.view.containerEl.querySelector<HTMLElement>(".metadata-container")
+      : null;
+    if (metadata?.querySelector(".metadata-property")) {
+      context.propertiesVisible = true;
+      this.syncInlineProperties(context);
+      return;
+    }
+    this.commandManager().executeCommandById("markdown:add-metadata-property");
+  }
+
+  private hideInlineProperties(context: RayNotesWindowContext): void {
+    context.propertiesVisible = false;
+    context.propertiesResizeObserver?.disconnect();
+    context.propertiesResizeObserver = null;
+    context.propertiesHost?.removeClass("ray-notes-properties-content");
+    context.propertiesHost = null;
+    context.popout.doc.body.removeClass("ray-notes-properties-visible");
+    context.popout.doc.body.style.removeProperty("--ray-notes-properties-height");
+  }
+
+  private syncInlineProperties(context: RayNotesWindowContext, attempt = 0): void {
     context.popout.win.setTimeout(() => {
       if (!this.windows.has(context) || !(context.leaf.view instanceof MarkdownView)) return;
-      const metadata = context.leaf.view.containerEl.querySelector<HTMLElement>(".metadata-container");
-      if (!metadata?.querySelector(".metadata-property")) {
-        if (attempt < 3) this.revealPropertiesAfterCommand(context, attempt + 1);
+      if (!context.propertiesVisible) {
+        this.hideInlineProperties(context);
         return;
       }
-      if (!context.popout.doc.body.hasClass("ray-notes-properties-open")) {
-        this.openPropertiesOverlay(context);
+      const metadata = context.leaf.view.containerEl.querySelector<HTMLElement>(".metadata-container");
+      if (!metadata) {
+        if (attempt < 3) this.syncInlineProperties(context, attempt + 1);
+        return;
       }
+      const hasProperties = !!metadata.querySelector(".metadata-property");
+      if (!hasProperties) {
+        if (attempt < 3) this.syncInlineProperties(context, attempt + 1);
+        else this.hideInlineProperties(context);
+        return;
+      }
+      if (context.propertiesHost && context.propertiesHost !== metadata) {
+        context.propertiesHost.removeClass("ray-notes-properties-content");
+      }
+      metadata.removeClass("is-collapsed");
+      metadata.addClass("ray-notes-properties-content");
+      context.propertiesHost = metadata;
+      context.popout.doc.body.addClass("ray-notes-properties-visible");
+      context.propertiesResizeObserver?.disconnect();
+      const updateHeight = (): void => {
+        if (!metadata.querySelector(".metadata-property")) {
+          this.hideInlineProperties(context);
+          return;
+        }
+        context.popout.doc.body.style.setProperty(
+          "--ray-notes-properties-height",
+          `${Math.ceil(metadata.getBoundingClientRect().height)}px`
+        );
+      };
+      context.propertiesResizeObserver = new ResizeObserver(updateHeight);
+      context.propertiesResizeObserver.observe(metadata);
+      context.popout.win.requestAnimationFrame(updateHeight);
     }, attempt === 0 ? 0 : 50);
   }
 
@@ -1364,7 +1487,7 @@ export default class RayNotesPlugin extends Plugin {
       nativeWindow.setParentWindow?.(null);
       nativeWindow.setMovable?.(true);
       nativeWindow.setMinimumSize?.(MIN_WINDOW_WIDTH, 240);
-      nativeWindow.setWindowButtonVisibility?.(false);
+      this.setTrafficLightsVisible(nativeWindow, false);
       nativeWindow.setAlwaysOnTop(context.alwaysOnTop, "modal-panel");
       if (IS_MACOS) {
         nativeWindow.setVisibleOnAllWorkspaces?.(context.visibleOnAllWorkspaces, {
@@ -1380,8 +1503,16 @@ export default class RayNotesPlugin extends Plugin {
     }
   }
 
-  private positionTrafficLights(nativeWindow: ElectronWindow): void {
+  private positionTrafficLights(nativeWindow: ElectronWindow, force = false): void {
+    const current = nativeWindow.getWindowButtonPosition?.();
+    if (!force && current?.x === TRAFFIC_LIGHT_POSITION.x && current.y === TRAFFIC_LIGHT_POSITION.y) return;
     nativeWindow.setWindowButtonPosition?.(TRAFFIC_LIGHT_POSITION);
+  }
+
+  private setTrafficLightsVisible(nativeWindow: ElectronWindow, visible: boolean): void {
+    this.positionTrafficLights(nativeWindow, true);
+    nativeWindow.setWindowButtonVisibility?.(visible);
+    this.positionTrafficLights(nativeWindow, true);
   }
 
   private isPointerInsideWindow(
@@ -1412,14 +1543,6 @@ export default class RayNotesPlugin extends Plugin {
     this.addToolbarButton(topActions, "command", "Action Panel", ["⌘", "K"], () => this.openActionPanel());
     this.addToolbarButton(topActions, "notebook", "Browse Notes", ["⌘", "P"], () => void this.openSwitcher());
     this.addToolbarButton(topActions, "plus", "Create Note", ["⌘", "N"], () => void this.createAndOpenNote());
-    const closePropertiesButton = this.addToolbarButton(
-      topActions,
-      "x",
-      "Close file properties",
-      [],
-      () => this.closeActiveLayer(context)
-    );
-    closePropertiesButton.addClass("ray-notes-properties-close");
     const bottom = doc.body.createDiv("ray-notes-toolbar ray-notes-toolbar-bottom");
     const bottomMain = bottom.createDiv("ray-notes-toolbar-main");
     const heading = this.addToolbarButton(bottomMain, "heading", "Heading", [], () => this.openHeadingMenu(heading));
@@ -1454,49 +1577,6 @@ export default class RayNotesPlugin extends Plugin {
     }
   }
 
-  private openPropertiesOverlay(context = this.activeWindow): void {
-    if (!context || !(context.leaf.view instanceof MarkdownView)) return;
-    const doc = context.popout.doc;
-    const metadata = context.leaf.view.containerEl.querySelector<HTMLElement>(".metadata-container");
-    if (!metadata) {
-      new Notice("File properties are not available in this view");
-      return;
-    }
-
-    const originalParent = metadata.parentNode;
-    const originalNext = metadata.nextSibling;
-    const overlay = doc.body.createDiv("ray-notes-properties-overlay");
-    overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", "File properties");
-    overlay.setAttribute("aria-modal", "true");
-    const panel = overlay.createDiv("ray-notes-properties-panel");
-
-    let layer: Layer;
-    layer = {
-      open: () => {
-        doc.body.addClass("ray-notes-properties-open");
-        metadata.removeClass("is-collapsed");
-        metadata.addClass("ray-notes-properties-content");
-        panel.append(metadata);
-      },
-      close: () => {
-        doc.body.removeClass("ray-notes-properties-open");
-        metadata.removeClass("ray-notes-properties-content");
-        if (originalParent?.isConnected) {
-          originalParent.insertBefore(
-            metadata,
-            originalNext?.parentNode === originalParent ? originalNext : null
-          );
-        }
-        overlay.remove();
-        if (context.activeLayer === layer) context.activeLayer = null;
-        this.focusEditor();
-      }
-    };
-    this.activateWindow(context);
-    this.openLayer(layer);
-  }
-
   private updateToggleButton(button: HTMLButtonElement | null, active: boolean): void {
     if (!button) return;
     button.toggleClass("is-active", active);
@@ -1526,93 +1606,116 @@ export default class RayNotesPlugin extends Plugin {
   private toggleMinimalMode(context = this.activeWindow): void {
     if (!context?.nativePopout) return;
     const nativeWindow = context.nativePopout;
+    const { body } = context.popout.doc;
+    const win = context.popout.win;
+    if (body.hasClass("ray-notes-mode-transition")) return;
+    body.addClass("ray-notes-mode-transition");
+    nativeWindow.setOpacity?.(0);
     if (context.minimal) {
       const current = nativeWindow.getBounds?.();
       const normal = context.normalBounds;
-      nativeWindow.setFocusable?.(true);
-      nativeWindow.setResizable?.(true);
-      nativeWindow.setMinimumSize?.(MIN_WINDOW_WIDTH, 240);
-      if (normal) {
-        const screen = (context.popout.win as ElectronBridgeWindow).require?.("electron").remote?.screen
-          ?? (window as ElectronBridgeWindow).require?.("electron").remote?.screen;
-        const workArea = current ? screen?.getDisplayMatching?.(current).workArea : null;
-        nativeWindow.setBounds?.(current && workArea
-          ? fittedRestoreBounds(current, normal, workArea)
-          : {
-              x: current?.x ?? normal.x,
-              y: current?.y ?? normal.y,
-              width: normal.width,
-              height: normal.height
-            });
-      }
-      void context.popout.doc.body.offsetWidth;
-      context.minimal = false;
-      context.popout.doc.body.removeClass("ray-notes-minimal");
-      context.minimalEl?.remove();
-      context.minimalEl = null;
-      context.normalBounds = null;
-      void this.showWindow(context);
+      win.setTimeout(() => {
+        nativeWindow.setFocusable?.(true);
+        nativeWindow.setResizable?.(true);
+        nativeWindow.setMinimumSize?.(MIN_WINDOW_WIDTH, 240);
+        if (normal) {
+          const screen = (win as ElectronBridgeWindow).require?.("electron").remote?.screen
+            ?? (window as ElectronBridgeWindow).require?.("electron").remote?.screen;
+          const workArea = current ? screen?.getDisplayMatching?.(current).workArea : null;
+          nativeWindow.setBounds?.(current && workArea
+            ? fittedRestoreBounds(current, normal, workArea)
+            : {
+                x: current?.x ?? normal.x,
+                y: current?.y ?? normal.y,
+                width: normal.width,
+                height: normal.height
+              });
+        }
+        win.setTimeout(() => {
+          context.minimal = false;
+          body.removeClass("ray-notes-minimal");
+          context.minimalEl?.remove();
+          context.minimalEl = null;
+          context.normalBounds = null;
+          nativeWindow.setOpacity?.(1);
+          win.setTimeout(() => {
+            body.removeClass("ray-notes-mode-transition");
+            this.activateWindow(context);
+            nativeWindow.focus();
+            win.focus();
+            if (context.leaf.view instanceof MarkdownView) context.leaf.view.editor.focus();
+          }, 0);
+        }, 32);
+      }, 0);
       return;
     }
 
-    context.normalBounds = nativeWindow.getBounds?.() ?? {
-      x: context.popout.win.screenX,
-      y: context.popout.win.screenY,
-      width: context.popout.win.outerWidth,
-      height: context.popout.win.outerHeight
-    };
-    context.minimal = true;
-    this.closeFloatingUi(context);
-    this.closeActiveLayer(context);
-    context.popout.doc.body.addClass("ray-notes-minimal");
-    const preview = context.popout.doc.body.createDiv("ray-notes-minimal-card");
-    preview.tabIndex = 0;
-    preview.setAttribute("role", "button");
-    preview.setAttribute("aria-label", "Restore note window");
-    preview.createDiv("ray-notes-minimal-title");
-    preview.createDiv("ray-notes-minimal-body");
-    const restore = (): void => this.toggleMinimalMode(context);
-    let drag: { bounds: WindowBounds; start: { x: number; y: number } } | null = null;
-    let dragged = false;
-    preview.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) return;
-      const bounds = nativeWindow.getBounds?.();
-      if (!bounds) return;
-      drag = { bounds, start: { x: event.screenX, y: event.screenY } };
-      dragged = false;
-      preview.setPointerCapture(event.pointerId);
-    });
-    preview.addEventListener("pointermove", (event) => {
-      if (!drag) return;
-      const bounds = draggedWindowBounds(drag.bounds, drag.start, { x: event.screenX, y: event.screenY });
-      if (!bounds) return;
-      dragged = true;
-      nativeWindow.setBounds?.(bounds);
-    });
-    preview.addEventListener("pointerup", () => {
-      drag = null;
-    });
-    preview.addEventListener("pointercancel", () => { drag = null; });
-    preview.addEventListener("click", () => {
-      if (dragged) {
+    win.setTimeout(() => {
+      context.normalBounds = nativeWindow.getBounds?.() ?? {
+        x: context.popout.win.screenX,
+        y: context.popout.win.screenY,
+        width: context.popout.win.outerWidth,
+        height: context.popout.win.outerHeight
+      };
+      context.minimal = true;
+      this.closeFloatingUi(context);
+      this.closeActiveLayer(context);
+      body.addClass("ray-notes-minimal");
+      const preview = body.createDiv("ray-notes-minimal-card");
+      preview.tabIndex = 0;
+      preview.setAttribute("role", "button");
+      preview.setAttribute("aria-label", "Restore note window");
+      preview.createDiv("ray-notes-minimal-title");
+      preview.createDiv("ray-notes-minimal-body");
+      const restore = (): void => this.toggleMinimalMode(context);
+      let drag: { bounds: WindowBounds; start: { x: number; y: number } } | null = null;
+      let dragged = false;
+      preview.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        const bounds = nativeWindow.getBounds?.();
+        if (!bounds) return;
+        drag = { bounds, start: { x: event.screenX, y: event.screenY } };
         dragged = false;
-        return;
-      }
-      restore();
-    });
-    preview.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") restore();
-    });
-    context.minimalEl = preview;
-    this.updateMinimalPreview(context);
-    void preview.offsetHeight;
-    nativeWindow.setWindowButtonVisibility?.(false);
-    nativeWindow.setMinimumSize?.(280, 76);
-    nativeWindow.setResizable?.(false);
-    nativeWindow.setBounds?.({ width: 300, height: 82 });
-    (context.popout.doc.activeElement as HTMLElement | null)?.blur();
-    nativeWindow.setFocusable?.(false);
-    nativeWindow.blur();
+        preview.setPointerCapture(event.pointerId);
+      });
+      preview.addEventListener("pointermove", (event) => {
+        if (!drag) return;
+        const bounds = draggedWindowBounds(drag.bounds, drag.start, {
+          x: event.screenX,
+          y: event.screenY
+        });
+        if (!bounds) return;
+        dragged = true;
+        nativeWindow.setBounds?.(bounds);
+      });
+      preview.addEventListener("pointerup", () => {
+        drag = null;
+      });
+      preview.addEventListener("pointercancel", () => { drag = null; });
+      preview.addEventListener("click", () => {
+        if (dragged) {
+          dragged = false;
+          return;
+        }
+        restore();
+      });
+      preview.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") restore();
+      });
+      context.minimalEl = preview;
+      this.updateMinimalPreview(context);
+      this.setTrafficLightsVisible(nativeWindow, false);
+      nativeWindow.setMinimumSize?.(280, 76);
+      nativeWindow.setResizable?.(false);
+      nativeWindow.setBounds?.({ width: 300, height: 82 });
+      win.setTimeout(() => {
+        (context.popout.doc.activeElement as HTMLElement | null)?.blur();
+        nativeWindow.setFocusable?.(false);
+        nativeWindow.blur();
+        nativeWindow.setOpacity?.(1);
+        win.setTimeout(() => body.removeClass("ray-notes-mode-transition"), 0);
+      }, 32);
+    }, 0);
   }
 
   private updateMinimalPreview(context: RayNotesWindowContext): void {
@@ -1784,10 +1887,17 @@ export default class RayNotesPlugin extends Plugin {
     items: Array<{ label: string; shortcut: string[]; run: () => void }>,
     dense = false
   ): void {
+    const context = this.activeWindow;
+    if (context?.floatingUi && context.floatingAnchor === anchor) {
+      this.closeFloatingUi(context);
+      this.focusEditor();
+      return;
+    }
     const menu = this.createFloatingUi(
       anchor.ownerDocument,
       `ray-notes-toolbar-menu${dense ? " ray-notes-toolbar-menu-dense" : ""}`
     );
+    if (context) context.floatingAnchor = anchor;
     for (const action of items) {
       const item = menu.createEl("button", { cls: "ray-notes-menu-row", type: "button" });
       item.createSpan({ text: action.label });
@@ -2025,7 +2135,10 @@ export default class RayNotesPlugin extends Plugin {
     this.floatingUi = floating;
 
     const closeOnOutside = (event: PointerEvent): void => {
-      if (!floating.contains(event.target as Node)) this.closeFloatingUi(context);
+      const target = event.target as Node;
+      if (!floating.contains(target) && !context.floatingAnchor?.contains(target)) {
+        this.closeFloatingUi(context);
+      }
     };
     const closeOnEscape = (event: KeyboardEvent): void => {
       if (event.key === "Escape") this.closeFloatingUi(context);
@@ -2078,6 +2191,7 @@ export default class RayNotesPlugin extends Plugin {
     context.floatingCleanup = null;
     context.floatingUi?.remove();
     context.floatingUi = null;
+    context.floatingAnchor = null;
   }
 
   private openLayer(layer: Layer): void {
@@ -2601,6 +2715,7 @@ export default class RayNotesPlugin extends Plugin {
   ): Promise<void> {
     if (!context) return;
     await context.leaf.openFile(file, { active: true, state: { mode: "source" } });
+    this.hideInlineProperties(context);
     if (context.leaf.view instanceof MarkdownView) {
       this.updateDerivedTitle(context.leaf.view.editor, context);
       this.updateMinimalPreview(context);
@@ -2717,25 +2832,209 @@ class RayNotesSettingTab extends PluginSettingTab {
     super(app, plugin);
   }
 
-  display(): void {
-    this.containerEl.empty();
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [
+      {
+        name: "Support Ray Notes",
+        desc: "Support development on Ko-fi.",
+        searchable: false,
+        render: (setting) => this.renderSupportBanner(setting.settingEl)
+      },
+      {
+        name: "Notes folder",
+        desc: "Only list and create Markdown files in this folder.",
+        control: { type: "text", key: "folder", placeholder: "Ray Notes" }
+      },
+      {
+        name: "Always on top",
+        desc: "Keep each newly created note above other apps.",
+        control: { type: "toggle", key: "alwaysOnTop" }
+      },
+      {
+        name: "Show on all spaces",
+        desc: "Display each newly created note on every macOS space.",
+        visible: IS_MACOS,
+        control: { type: "toggle", key: "visibleOnAllWorkspaces" }
+      },
+      {
+        name: "Enable global shortcut",
+        desc: "Show or hide the primary note window from any app.",
+        control: { type: "toggle", key: "globalShortcutEnabled" }
+      },
+      {
+        name: "Global shortcut",
+        desc: "Press a shortcut with at least one modifier. Esc cancels recording.",
+        render: (setting) => this.renderShortcutSetting(setting)
+      },
+      {
+        name: "Raycast appearance",
+        desc: "Apply Raycast-inspired typography and content styling to the note body.",
+        control: { type: "toggle", key: "raycastStyle" }
+      },
+      {
+        name: "Translucent window",
+        desc: "Use translucent backgrounds and macOS vibrancy in notes.",
+        control: { type: "toggle", key: "translucentWindow" }
+      },
+      {
+        name: "Folder note click",
+        desc: "Choose where notes from the selected folder open.",
+        control: {
+          type: "dropdown",
+          key: "noteOpenBehavior",
+          options: {
+            default: "Open in Obsidian",
+            "when-open": "Use Ray Notes when open",
+            always: "Always use Ray Notes"
+          }
+        }
+      },
+      {
+        name: "Minimize main window",
+        desc: "Minimize the main Obsidian window when opening a note window.",
+        control: { type: "toggle", key: "minimizeMainWindow" }
+      }
+    ];
+  }
 
-    const support = this.containerEl.createDiv("ray-notes-support-banner");
-    const supportIcon = support.createDiv("ray-notes-support-icon");
+  getControlValue(key: string): unknown {
+    return this.plugin.settings[key as keyof RayNotesSettings];
+  }
+
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    switch (key) {
+      case "folder":
+        this.plugin.settings.folder = normalizePath(String(value).trim());
+        break;
+      case "alwaysOnTop":
+      case "visibleOnAllWorkspaces":
+      case "globalShortcutEnabled":
+      case "raycastStyle":
+      case "translucentWindow":
+      case "minimizeMainWindow":
+        this.plugin.settings[key] = Boolean(value);
+        break;
+      case "noteOpenBehavior":
+        this.plugin.settings.noteOpenBehavior = value as RayNotesSettings["noteOpenBehavior"];
+        break;
+      default:
+        return;
+    }
+    if (key === "globalShortcutEnabled") this.plugin.updateGlobalShortcutRegistration();
+    if (key === "raycastStyle" || key === "translucentWindow") this.plugin.applyAppearance();
+    await this.plugin.saveSettings();
+  }
+
+  private renderSupportBanner(container: HTMLElement): void {
+    container.empty();
+    container.addClass("ray-notes-support-banner");
+    const supportIcon = container.createDiv("ray-notes-support-icon");
     setIcon(supportIcon, "coffee");
-    const supportCopy = support.createDiv("ray-notes-support-copy");
+    const supportCopy = container.createDiv("ray-notes-support-copy");
     supportCopy.createDiv({ cls: "ray-notes-support-title", text: "Support Ray Notes" });
     supportCopy.createDiv({
       cls: "ray-notes-support-description",
       text: "If Ray Notes helps your workflow, you can support its development on Ko-fi."
     });
-    const supportLink = support.createEl("a", {
+    const supportLink = container.createEl("a", {
       cls: "ray-notes-support-link",
       href: SUPPORT_URL,
       text: "Open Ko-fi"
     });
     supportLink.target = "_blank";
     supportLink.rel = "noopener";
+  }
+
+  private renderShortcutSetting(shortcutSetting: Setting): void {
+    const shortcutStatus = shortcutSetting.descEl.createDiv("ray-notes-shortcut-status");
+    shortcutSetting.addButton((button) => {
+      let recording = false;
+      const win = button.buttonEl.ownerDocument.defaultView;
+      const setStatus = (text: string, error = false): void => {
+        shortcutStatus.setText(text);
+        shortcutStatus.toggleClass("is-error", error);
+      };
+      const finishRecording = (): void => {
+        if (!recording) return;
+        recording = false;
+        win?.removeEventListener("keydown", captureShortcut, true);
+        button.setButtonText(this.plugin.settings.globalShortcut);
+      };
+      const captureShortcut = (event: KeyboardEvent): void => {
+        if (!recording) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        if (event.key === "Escape") {
+          finishRecording();
+          this.plugin.endGlobalShortcutRecording(true);
+          setStatus("Recording canceled.");
+          button.buttonEl.blur();
+          return;
+        }
+        const accelerator = shortcutAccelerator({
+          code: event.code,
+          key: event.key,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          altKey: event.altKey,
+          shiftKey: event.shiftKey,
+          platform: process.platform
+        });
+        if (!accelerator) {
+          setStatus(
+            ["Meta", "Control", "Alt", "Shift"].includes(event.key)
+              ? "Now press another key."
+              : "Include Command, Option, Control, or Shift.",
+            !["Meta", "Control", "Alt", "Shift"].includes(event.key)
+          );
+          return;
+        }
+        const previousShortcut = this.plugin.settings.globalShortcut;
+        this.plugin.settings.globalShortcut = accelerator;
+        finishRecording();
+        if (this.plugin.endGlobalShortcutRecording(true)) {
+          void this.plugin.saveSettings();
+          setStatus("Shortcut registered.");
+        } else {
+          this.plugin.settings.globalShortcut = previousShortcut;
+          this.plugin.updateGlobalShortcutRegistration();
+          button.setButtonText(previousShortcut);
+          setStatus("Could not register this shortcut. It may already be in use.", true);
+        }
+        button.buttonEl.blur();
+      };
+      button
+        .setButtonText(this.plugin.settings.globalShortcut)
+        .setTooltip("Record global shortcut")
+        .onClick(() => {
+          if (recording) return;
+          recording = true;
+          this.plugin.beginGlobalShortcutRecording();
+          button.setButtonText("Press shortcut…");
+          setStatus("Press shortcut…");
+          button.buttonEl.focus();
+          win?.addEventListener("keydown", captureShortcut, true);
+        });
+      button.buttonEl.addEventListener("blur", () => {
+        if (!recording) return;
+        const lostWindowFocus = !button.buttonEl.ownerDocument.hasFocus();
+        finishRecording();
+        this.plugin.endGlobalShortcutRecording(true);
+        setStatus(
+          lostWindowFocus
+            ? "Another app captured that shortcut. Choose a different one."
+            : "Recording canceled.",
+          lostWindowFocus
+        );
+      });
+    });
+  }
+
+  display(): void {
+    this.containerEl.empty();
+
+    this.renderSupportBanner(this.containerEl.createDiv());
 
     new Setting(this.containerEl)
       .setName("Notes folder")
@@ -2786,88 +3085,7 @@ class RayNotesSettingTab extends PluginSettingTab {
     const shortcutSetting = new Setting(this.containerEl)
       .setName("Global shortcut")
       .setDesc("Press a shortcut with at least one modifier. Esc cancels recording.");
-    const shortcutStatus = shortcutSetting.descEl.createDiv("ray-notes-shortcut-status");
-    shortcutSetting.addButton((button) => {
-        let recording = false;
-        const win = button.buttonEl.ownerDocument.defaultView;
-        const setStatus = (text: string, error = false): void => {
-          shortcutStatus.setText(text);
-          shortcutStatus.toggleClass("is-error", error);
-        };
-        const finishRecording = (): void => {
-          if (!recording) return;
-          recording = false;
-          win?.removeEventListener("keydown", captureShortcut, true);
-          button.setButtonText(this.plugin.settings.globalShortcut);
-        };
-        const captureShortcut = (event: KeyboardEvent): void => {
-          if (!recording) return;
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          event.stopPropagation();
-          if (event.key === "Escape") {
-            finishRecording();
-            this.plugin.endGlobalShortcutRecording(true);
-            setStatus("Recording canceled.");
-            button.buttonEl.blur();
-            return;
-          }
-          const accelerator = shortcutAccelerator({
-            code: event.code,
-            key: event.key,
-            metaKey: event.metaKey,
-            ctrlKey: event.ctrlKey,
-            altKey: event.altKey,
-            shiftKey: event.shiftKey,
-            platform: process.platform
-          });
-          if (!accelerator) {
-            if (["Meta", "Control", "Alt", "Shift"].includes(event.key)) {
-              setStatus("Now press another key.");
-            } else {
-              setStatus("Include Command, Option, Control, or Shift.", true);
-            }
-            return;
-          }
-          const previousShortcut = this.plugin.settings.globalShortcut;
-          this.plugin.settings.globalShortcut = accelerator;
-          finishRecording();
-          if (this.plugin.endGlobalShortcutRecording(true)) {
-            void this.plugin.saveSettings();
-            setStatus("Shortcut registered.");
-          } else {
-            this.plugin.settings.globalShortcut = previousShortcut;
-            this.plugin.updateGlobalShortcutRegistration();
-            button.setButtonText(previousShortcut);
-            setStatus("Could not register this shortcut. It may already be in use.", true);
-          }
-          button.buttonEl.blur();
-        };
-        button
-          .setButtonText(this.plugin.settings.globalShortcut)
-          .setTooltip("Record global shortcut")
-          .onClick(() => {
-            if (recording) return;
-            recording = true;
-            this.plugin.beginGlobalShortcutRecording();
-            button.setButtonText("Press shortcut…");
-            setStatus("Press shortcut…");
-            button.buttonEl.focus();
-            win?.addEventListener("keydown", captureShortcut, true);
-          });
-        button.buttonEl.addEventListener("blur", () => {
-          if (!recording) return;
-          const lostWindowFocus = !button.buttonEl.ownerDocument.hasFocus();
-          finishRecording();
-          this.plugin.endGlobalShortcutRecording(true);
-          setStatus(
-            lostWindowFocus
-              ? "Another app captured that shortcut. Choose a different one."
-              : "Recording canceled.",
-            lostWindowFocus
-          );
-        });
-      });
+    this.renderShortcutSetting(shortcutSetting);
 
     new Setting(this.containerEl)
       .setName("Raycast appearance")

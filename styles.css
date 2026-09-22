@@ -45,7 +45,7 @@ body.ray-notes-window.ray-notes-raycast-style {
   --ray-list-indent: 14px;
   --ray-list-root-indent: 20px;
   --ray-list-marker-size: 5px;
-  --ray-list-item-spacing: 0;
+  --ray-list-item-spacing: 4px;
   --ray-ordered-marker-width: 4ch;
   --ray-task-checkbox-size: 15px;
   --ray-task-checkbox-border-width: 1.5px;
@@ -140,36 +140,36 @@ body.ray-notes-window.ray-notes-raycast-style.theme-light {
   color-scheme: light;
 }
 
-html.ray-notes-translucent {
-  background: transparent !important;
+html:root.ray-notes-translucent {
+  background: transparent;
 }
 
-body.ray-notes-window.ray-notes-translucent {
+body.ray-notes-window.ray-notes-window.ray-notes-translucent {
   --ray-notes-layer-background: color-mix(
     in srgb,
     var(--background-primary) 92%,
     transparent
   );
-  background: transparent !important;
+  background: transparent;
 }
 
 body.ray-notes-window.theme-dark.ray-notes-translucent {
   --ray-notes-layer-background: rgb(41 40 41 / 95%);
 }
 
-body.ray-notes-window.ray-notes-translucent .app-container {
-  background: color-mix(in srgb, var(--background-primary) 52%, transparent) !important;
+body.ray-notes-window.ray-notes-translucent > .app-container {
+  background: color-mix(in srgb, var(--background-primary) 52%, transparent);
 }
 
-body.ray-notes-window.ray-notes-raycast-style.ray-notes-translucent {
-  background: transparent !important;
+body.ray-notes-window.ray-notes-window.ray-notes-raycast-style.ray-notes-translucent {
+  background: transparent;
 }
 
-body.ray-notes-window.ray-notes-raycast-style.ray-notes-translucent .app-container {
-  background: var(--ray-notes-vibrancy-overlay) !important;
+body.ray-notes-window.ray-notes-raycast-style.ray-notes-translucent > .app-container {
+  background: var(--ray-notes-vibrancy-overlay);
 }
 
-body.ray-notes-window.ray-notes-translucent :is(
+body.ray-notes-window.ray-notes-translucent > .app-container :is(
   .horizontal-main-container,
   .workspace,
   .workspace-split,
@@ -184,7 +184,7 @@ body.ray-notes-window.ray-notes-translucent :is(
   .markdown-source-view.mod-cm6 .cm-scroller,
   .markdown-preview-view
 ) {
-  background: transparent !important;
+  background: transparent;
 }
 
 body.ray-notes-window.ray-notes-raycast-style,
@@ -194,28 +194,28 @@ body.ray-notes-window.ray-notes-raycast-style button {
   font-feature-settings: "calt", "kern", "liga", "ss03";
 }
 
-body.ray-notes-window .workspace-ribbon,
-body.ray-notes-window .workspace-tab-header-container,
-body.ray-notes-window .view-header,
-body.ray-notes-window .status-bar,
-body.ray-notes-window .inline-title {
-  display: none !important;
+body.ray-notes-window > .app-container .workspace-ribbon,
+body.ray-notes-window > .app-container .workspace-tab-header-container,
+body.ray-notes-window > .app-container .view-header,
+body.ray-notes-window > .app-container .status-bar,
+body.ray-notes-window > .app-container .inline-title {
+  display: none;
 }
 
-body.ray-notes-window .titlebar {
-  position: fixed !important;
-  inset: 0 0 auto !important;
-  z-index: 900 !important;
-  display: block !important;
-  width: 100% !important;
-  height: var(--ray-notes-topbar-height) !important;
-  min-height: var(--ray-notes-topbar-height) !important;
-  opacity: 0 !important;
-  -webkit-app-region: drag !important;
+body.ray-notes-window .titlebar.titlebar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 900;
+  display: block;
+  width: 100%;
+  height: var(--ray-notes-topbar-height);
+  min-height: var(--ray-notes-topbar-height);
+  opacity: 0;
+  -webkit-app-region: drag;
 }
 
-body.ray-notes-window .titlebar > * {
-  visibility: hidden !important;
+body.ray-notes-window .titlebar.titlebar > * {
+  visibility: hidden;
 }
 
 body.ray-notes-window .workspace,
@@ -232,8 +232,9 @@ body.ray-notes-window .workspace-leaf-content[data-type="markdown"] {
   border: 0;
 }
 
-body.ray-notes-window .workspace-leaf-content[data-type="markdown"] > .view-content {
-  overflow: hidden !important;
+body.ray-notes-window .workspace
+  .workspace-leaf-content[data-type="markdown"] > .view-content {
+  overflow: hidden;
 }
 
 body.ray-notes-window .markdown-source-view.mod-cm6 .cm-editor,
@@ -247,10 +248,10 @@ body.ray-notes-window .markdown-source-view.mod-cm6 {
   padding-block: 0;
 }
 
-body.ray-notes-window .markdown-source-view.mod-cm6 .cm-scroller {
-  height: 100% !important;
+body.ray-notes-window .workspace .markdown-source-view.mod-cm6 .cm-scroller {
+  height: 100%;
   margin-block: 0;
-  padding-block: 0 !important;
+  padding-block: 0;
   scrollbar-width: none;
 }
 
@@ -283,11 +284,11 @@ body.ray-notes-window .markdown-preview-view::-webkit-scrollbar {
   display: none;
 }
 
-body.ray-notes-window .markdown-source-view.mod-cm6 .cm-content,
-body.ray-notes-window .markdown-preview-view {
+body.ray-notes-window .workspace .markdown-source-view.mod-cm6 .cm-content,
+body.ray-notes-window .workspace .markdown-preview-view {
   box-sizing: border-box;
-  padding-top: calc(var(--ray-notes-topbar-height) + 8px) !important;
-  padding-bottom: calc(var(--ray-notes-bottom-bar-height) + 12px) !important;
+  padding-top: calc(var(--ray-notes-topbar-height) + 8px);
+  padding-bottom: calc(var(--ray-notes-bottom-bar-height) + 12px);
 }
 
 body.ray-notes-window .markdown-preview-view {
@@ -297,11 +298,12 @@ body.ray-notes-window .markdown-preview-view {
 }
 
 /* User-tunable note canvas: outer content spacing and typography. */
-body.ray-notes-window.ray-notes-raycast-style .markdown-source-view.mod-cm6 .cm-content,
-body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view {
-  padding-top: var(--ray-notes-topbar-height) !important;
-  padding-inline: clamp(24px, 4vw, 46px) !important;
-  padding-bottom: var(--ray-notes-bottom-bar-height) !important;
+body.ray-notes-window.ray-notes-raycast-style .workspace
+  .markdown-source-view.mod-cm6 .cm-content,
+body.ray-notes-window.ray-notes-raycast-style .workspace .markdown-preview-view {
+  padding-top: var(--ray-notes-topbar-height);
+  padding-inline: clamp(24px, 4vw, 46px);
+  padding-bottom: var(--ray-notes-bottom-bar-height);
   color: var(--text-normal);
   font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
   font-feature-settings: "calt", "kern", "liga", "ss03";
@@ -311,19 +313,20 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view {
   letter-spacing: var(--ray-body-letter-spacing);
 }
 
-body.ray-notes-window.ray-notes-raycast-style .markdown-source-view.mod-cm6 .cm-scroller {
-  padding-inline: 0 !important;
+body.ray-notes-window.ray-notes-raycast-style .workspace
+  .markdown-source-view.mod-cm6 .cm-scroller {
+  padding-inline: 0;
   scroll-padding-block: var(--ray-notes-topbar-height) var(--ray-notes-bottom-bar-height);
 }
 
-body.ray-notes-window .document-search-container {
+body.ray-notes-window .workspace-leaf-content .document-search-container {
   position: relative;
   z-index: 900;
   top: var(--ray-notes-topbar-height);
   box-sizing: border-box;
   height: 56px;
-  padding: 8px !important;
-  background: transparent !important;
+  padding: 8px;
+  background: transparent;
 }
 
 body.ray-notes-window .document-search {
@@ -342,27 +345,27 @@ body.ray-notes-window .document-search-buttons {
   gap: 0;
 }
 
-body.ray-notes-window .document-search
+body.ray-notes-window .workspace-leaf-content .document-search
   :is(.document-search-button, .document-search-close-button) {
   width: 28px;
   height: 28px;
   min-width: 28px;
   padding: 5px;
   border-radius: 50%;
-  background: transparent !important;
+  background: transparent;
 }
 
-body.ray-notes-window .document-search
+body.ray-notes-window .workspace-leaf-content .document-search
   :is(.document-search-button, .document-search-close-button):hover {
-  background: transparent !important;
+  background: transparent;
 }
 
 body.ray-notes-window .document-search-count {
   font-variant-numeric: tabular-nums;
 }
 
-body.ray-notes-window > .tooltip {
-  z-index: 2000 !important;
+body.ray-notes-window > .tooltip.tooltip {
+  z-index: 2000;
 }
 
 body.ray-notes-window .document-search-input {
@@ -380,21 +383,21 @@ body.ray-notes-window .document-search-close-button {
   align-self: center;
 }
 
-body.ray-notes-window .document-search-input input {
+body.ray-notes-window .document-search .document-search-input input {
   height: 100%;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6:has(> .document-search-container) .cm-content {
-  padding-top: 72px !important;
+  padding-top: 72px;
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-reading-view:has(> .document-search-container) .markdown-preview-view {
-  padding-top: calc(var(--ray-notes-topbar-height) + 12px) !important;
+  padding-top: calc(var(--ray-notes-topbar-height) + 12px);
 }
 
 body.ray-notes-window.ray-notes-raycast-style
@@ -408,9 +411,10 @@ body.ray-notes-window.ray-notes-raycast-style
   margin-inline: 0;
 }
 
-body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view .markdown-preview-sizer {
-  min-height: 0 !important;
-  padding-bottom: 0 !important;
+body.ray-notes-window.ray-notes-raycast-style .markdown-reading-view
+  .markdown-preview-view .markdown-preview-sizer {
+  min-height: 0;
+  padding-bottom: 0;
 }
 
 body.ray-notes-window.ray-notes-raycast-style :is(
@@ -434,9 +438,9 @@ body.ray-notes-window.ray-notes-raycast-style :is(
   h2,
   h3
 ) {
-  color: var(--text-normal) !important;
-  line-height: 1.25 !important;
-  letter-spacing: -0.018em !important;
+  color: var(--text-normal);
+  line-height: 1.25;
+  letter-spacing: -0.018em;
 }
 
 body.ray-notes-window.ray-notes-raycast-style
@@ -463,19 +467,19 @@ body.ray-notes-window.ray-notes-raycast-style
     .HyperMD-header-2 .cm-header-2,
     .HyperMD-header-3 .cm-header-3
   ) {
-  font-size: inherit !important;
-  font-weight: inherit !important;
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6 .HyperMD-header .cm-inline-code {
-  font-size: var(--ray-inline-code-size) !important;
+  font-size: var(--ray-inline-code-size);
 }
 
 body.ray-notes-window.ray-notes-raycast-style .cm-inline-code,
 body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view :not(pre) > code {
   padding: var(--ray-inline-code-padding-block) var(--ray-inline-code-padding-inline);
-  border: 0 !important;
+  border: 0;
   border-radius: var(--ray-inline-code-radius);
   color: var(--ray-notes-code-text);
   background: var(--ray-notes-inline-code-surface);
@@ -483,31 +487,39 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view :not(pre) >
   -webkit-box-decoration-break: clone;
   font-family: var(--ray-code-font);
   font-size: var(--ray-inline-code-size);
-  font-weight: var(--ray-code-weight) !important;
+  font-weight: var(--ray-code-weight);
   line-height: var(--ray-inline-code-line-height);
   vertical-align: baseline;
 }
 
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6 .cm-formatting-code {
-  padding-block: 0;
-  padding-inline: 0;
+  padding-block: 0.15em;
+  padding-inline: 0.1em 0;
   border-radius: 0;
   line-height: inherit;
+  border-radius: 5px 0 0 5px;
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-formatting-code + .cm-inline-code + .cm-formatting-code {
+  padding-inline: 0 0.1em;
+  border-radius: 0 5px 5px 0;
 }
 
 /* User-tunable note format: callouts. */
-body.ray-notes-window.ray-notes-raycast-style .callout {
+body.ray-notes-window.ray-notes-raycast-style
+  :is(.markdown-source-view, .markdown-preview-view) .callout {
   --callout-background-alpha: var(--ray-notes-callout-background-alpha);
   --callout-border-opacity: var(--ray-notes-callout-border-alpha);
   padding: 8px 8px 8px 10px;
-  border: 1px solid hsl(from var(--callout-color) h s l / var(--callout-border-opacity)) !important;
+  border: 1px solid hsl(from var(--callout-color) h s l / var(--callout-border-opacity));
   border-radius: 10px;
-  background: hsl(from var(--callout-color) h s l / var(--callout-background-alpha)) !important;
+  background: hsl(from var(--callout-color) h s l / var(--callout-background-alpha));
   overflow: hidden;
-  box-shadow: none !important;
-  filter: none !important;
-  backdrop-filter: none !important;
+  box-shadow: none;
+  filter: none;
+  backdrop-filter: none;
   isolation: isolate;
 }
 
@@ -523,7 +535,7 @@ body.ray-notes-window.ray-notes-raycast-style .callout-content {
 /* User-tunable note format: divider spacing. */
 body.ray-notes-window.ray-notes-raycast-style hr {
   margin-block: var(--ray-hr-spacing);
-  border-color: var(--ray-notes-divider) !important;
+  border-color: var(--ray-notes-divider);
 }
 
 /* User-tunable note format: blockquote spacing. */
@@ -532,10 +544,10 @@ body.ray-notes-window.ray-notes-raycast-style :is(.markdown-preview-view, .markd
   padding: 0 0 0 20px;
   border-inline-start: var(--ray-blockquote-border-width) solid var(--ray-notes-accent);
   color: var(--text-normal);
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
 }
 
 body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view blockquote {
@@ -547,9 +559,9 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view blockquote 
 }
 
 body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view blockquote::before {
-  content: none !important;
-  display: none !important;
-  border: 0 !important;
+  content: none;
+  display: none;
+  border: 0;
 }
 
 body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view blockquote blockquote {
@@ -562,8 +574,9 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view :is(ul, ol)
   padding-inline-start: var(--ray-list-root-indent);
 }
 
-body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view :is(ul, ol) > li {
-  margin-inline-start: 0 !important;
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-reading-view .markdown-preview-view :is(ul, ol) > li {
+  margin-inline-start: 0;
 }
 
 /* User-tunable list geometry. Obsidian writes a matched padding/text-indent
@@ -574,7 +587,7 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view :is(ul, ol)
 /* User-tunable note format: explicit list continuation alignment.
    First-level continuation rows contain two visible source spaces. Give those
    rows the remaining inset so their text starts on the shared text axis. */
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 .cm-line.ray-notes-list-continuation {
   padding-inline-start: var(--ray-notes-list-continuation-padding) !important;
   text-indent: var(--ray-notes-list-continuation-indent) !important;
@@ -602,14 +615,14 @@ body.ray-notes-window.ray-notes-raycast-style
   text-indent: -29px !important;
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 .cm-formatting-list-ol {
-  display: inline-block !important;
-  width: var(--ray-ordered-marker-width) !important;
+  display: inline-block;
+  width: var(--ray-ordered-marker-width);
   min-width: var(--ray-ordered-marker-width);
-  text-align: end !important;
+  text-align: end;
   font-variant-numeric: tabular-nums;
-  color: var(--ray-notes-accent) !important;
+  color: var(--ray-notes-accent);
   margin-inline-end: -0.75ch;
   transform: translateX(-1ch);
 }
@@ -638,11 +651,11 @@ body.ray-notes-window.ray-notes-raycast-style
   ) input.task-list-item-checkbox:not(:checked),
 body.ray-notes-window.ray-notes-raycast-style
   input.task-list-item-checkbox:is([data-task=""], [data-task=" "]):not(:checked) {
-  border-color: var(--ray-notes-accent) !important;
-  border-width: var(--ray-task-checkbox-border-width) !important;
+  border-color: var(--ray-notes-accent);
+  border-width: var(--ray-task-checkbox-border-width);
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   :is(
     .HyperMD-task-line[data-task="x" i],
     .HyperMD-task-line[data-task="-"],
@@ -651,69 +664,69 @@ body.ray-notes-window.ray-notes-raycast-style
   ) input.task-list-item-checkbox,
 body.ray-notes-window.ray-notes-raycast-style
   input.task-list-item-checkbox:is([data-task="x" i], [data-task="-"]) {
-  border-color: var(--ray-notes-accent) !important;
-  background-color: var(--ray-notes-accent) !important;
+  border-color: var(--ray-notes-accent);
+  background-color: var(--ray-notes-accent);
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   :is(
     .HyperMD-task-line[data-task="x" i],
     .task-list-item[data-task="x" i]
   ) input.task-list-item-checkbox::after,
 body.ray-notes-window.ray-notes-raycast-style
   input.task-list-item-checkbox[data-task="x" i]::after {
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  background-color: var(--text-on-accent) !important;
-  transform: none !important;
-  -webkit-mask: center / 82% 82% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12l4 4L19 6' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
-  mask: center / 82% 82% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12l4 4L19 6' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--text-on-accent);
+  transform: none;
+  -webkit-mask: center / 82% 82% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12l4 4L19 6' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  mask: center / 82% 82% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12l4 4L19 6' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   :is(
     .HyperMD-task-line[data-task="-"],
     .task-list-item[data-task="-"]
   ) input.task-list-item-checkbox::after,
 body.ray-notes-window.ray-notes-raycast-style
   input.task-list-item-checkbox[data-task="-"]::after {
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  background-color: var(--text-on-accent) !important;
-  transform: none !important;
-  -webkit-mask: center / 82% 82% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12h14' fill='none' stroke='black' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") !important;
-  mask: center / 82% 82% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12h14' fill='none' stroke='black' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") !important;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--text-on-accent);
+  transform: none;
+  -webkit-mask: center / 82% 82% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12h14' fill='none' stroke='black' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
+  mask: center / 82% 82% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12h14' fill='none' stroke='black' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6
   .HyperMD-task-line:is([data-task="x" i], [data-task="-"])
   input.task-list-item-checkbox::after {
-  transform: translateX(0.5px) !important;
+  transform: translateX(0.5px);
 }
 
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6 .cm-line.HyperMD-task-line[data-task="x" i],
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-preview-view .task-list-item[data-task="x" i] {
-  color: var(--text-muted) !important;
-  text-decoration: none !important;
+  color: var(--text-muted);
+  text-decoration: none;
 }
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6 .cm-line.HyperMD-list-line + .HyperMD-list-line {
   padding-top: var(--ray-list-item-spacing);
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 .cm-line.HyperMD-list-line .list-bullet::after {
-  width: var(--ray-list-marker-size) !important;
-  height: var(--ray-list-marker-size) !important;
-  background-color: var(--ray-notes-accent) !important;
+  width: var(--ray-list-marker-size);
+  height: var(--ray-list-marker-size);
+  background-color: var(--ray-notes-accent);
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-preview-view ul > li:not(.task-list-item) {
   position: relative;
   list-style: none;
@@ -726,17 +739,17 @@ body.ray-notes-window.ray-notes-raycast-style
     .cm-line.HyperMD-list-line-8
   ) .list-bullet::after {
   box-sizing: border-box;
-  border: 1px solid var(--ray-notes-accent) !important;
-  background-color: transparent !important;
+  border: 1px solid var(--ray-notes-accent);
+  background-color: transparent;
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 :is(
     .cm-line.HyperMD-list-line-3,
     .cm-line.HyperMD-list-line-6,
     .cm-line.HyperMD-list-line-9
   ) .list-bullet::after {
-  border-radius: 1px !important;
+  border-radius: 1px;
 }
 
 body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view ul {
@@ -751,33 +764,35 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view ul ul ul {
   list-style-type: square;
 }
 
-body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view li::marker {
-  color: var(--ray-notes-accent) !important;
-}
-
-body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view ul > li::marker {
-  color: transparent !important;
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-reading-view .markdown-preview-view li::marker {
+  color: var(--ray-notes-accent);
 }
 
 body.ray-notes-window.ray-notes-raycast-style
-  .markdown-preview-view .list-bullet::after {
-  border: 0 !important;
-  border-radius: 50% !important;
-  background-color: var(--ray-notes-accent) !important;
+  .markdown-reading-view .markdown-preview-view ul > li::marker {
+  color: transparent;
 }
 
 body.ray-notes-window.ray-notes-raycast-style
-  .markdown-preview-view ul ul .list-bullet::after {
+  .markdown-reading-view .markdown-preview-view .list-bullet::after {
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--ray-notes-accent);
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-reading-view .markdown-preview-view ul ul .list-bullet::after {
   box-sizing: border-box;
-  border: 1px solid var(--ray-notes-accent) !important;
-  background-color: transparent !important;
+  border: 1px solid var(--ray-notes-accent);
+  background-color: transparent;
 }
 
 body.ray-notes-window.ray-notes-raycast-style
-  .markdown-preview-view ul ul ul .list-bullet::after {
-  border: 0 !important;
-  border-radius: 1px !important;
-  background-color: var(--ray-notes-accent) !important;
+  .markdown-reading-view .markdown-preview-view ul ul ul .list-bullet::after {
+  border: 0;
+  border-radius: 1px;
+  background-color: var(--ray-notes-accent);
 }
 
 body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view li {
@@ -812,7 +827,8 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-source-view.mod-cm6 .cm-
   padding-block: calc(var(--ray-hr-spacing) / 2);
 }
 
-body.ray-notes-window.ray-notes-raycast-style .markdown-source-view.mod-cm6 .cm-line.HyperMD-quote {
+body.ray-notes-window.ray-notes-raycast-style .workspace
+  .markdown-source-view.mod-cm6 .cm-line.HyperMD-quote {
   position: relative;
   inset-inline-start: -7.5px;
   width: calc(100% + 7.5px);
@@ -821,9 +837,9 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-source-view.mod-cm6 .cm-
   text-indent: -10.5px !important;
   color: var(--text-normal);
   border-block-width: 0;
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
+  background: transparent;
+  background-color: transparent;
+  box-shadow: none;
 }
 
 body.ray-notes-window.ray-notes-raycast-style
@@ -864,9 +880,9 @@ body.ray-notes-window.ray-notes-raycast-style
   ) !important;
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 .cm-line.ray-notes-quote-depth::before {
-  content: none !important;
+  content: none;
 }
 
 body.ray-notes-window.ray-notes-raycast-style
@@ -875,9 +891,9 @@ body.ray-notes-window.ray-notes-raycast-style
   width: calc(100% - 6.5px);
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 .cm-line.HyperMD-quote .cm-formatting-quote {
-  margin-inline-start: 0 !important;
+  margin-inline-start: 0;
 }
 
 body.ray-notes-window.ray-notes-raycast-style
@@ -903,40 +919,40 @@ body.ray-notes-window.ray-notes-raycast-style
 
 /* Only the line-level quote border is used. Obsidian may also insert this
    nested border element, which otherwise draws a duplicate decoration. */
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 .cm-line.HyperMD-quote .cm-blockquote-border::before {
-  border-inline-start: 0 !important;
+  border-inline-start: 0;
 }
 
 /* User-tunable note format: fenced code blocks. */
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock,
 body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view pre {
-  border: 0 !important;
-  background: var(--ray-notes-code-block-surface) !important;
-  box-shadow: none !important;
+  border: 0;
+  background: var(--ray-notes-code-block-surface);
+  box-shadow: none;
   font-family: var(--ray-code-font);
   font-size: var(--ray-code-block-size);
-  font-weight: var(--ray-code-weight) !important;
+  font-weight: var(--ray-code-weight);
   font-synthesis: none;
   line-height: var(--ray-code-block-line-height);
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock {
-  padding-inline: var(--ray-code-block-padding-inline) !important;
+  padding-inline: var(--ray-code-block-padding-inline);
   color: var(--ray-notes-code-text);
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock-begin {
-  padding-top: var(--ray-code-block-padding-block) !important;
+  padding-top: var(--ray-code-block-padding-block);
   border-radius: var(--ray-code-block-radius) var(--ray-code-block-radius) 0 0;
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock-end {
-  padding-bottom: var(--ray-code-block-padding-block) !important;
+  padding-bottom: var(--ray-code-block-padding-block);
   border-radius: 0 0 var(--ray-code-block-radius) var(--ray-code-block-radius);
 }
 
@@ -963,11 +979,11 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view pre {
 
 body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view pre > code {
   padding: 0;
-  border: 0 !important;
+  border: 0;
   color: inherit;
-  background: transparent !important;
-  font-family: inherit !important;
-  font-weight: var(--ray-code-weight) !important;
+  background: transparent;
+  font-family: inherit;
+  font-weight: var(--ray-code-weight);
 }
 
 body.ray-notes-window.ray-notes-raycast-style
@@ -975,8 +991,8 @@ body.ray-notes-window.ray-notes-raycast-style
     .markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock *,
     .markdown-preview-view pre > code *
   ) {
-  font-family: inherit !important;
-  font-weight: var(--ray-code-weight) !important;
+  font-family: inherit;
+  font-weight: var(--ray-code-weight);
 }
 
 body.ray-notes-window.ray-notes-raycast-style
@@ -986,36 +1002,36 @@ body.ray-notes-window.ray-notes-raycast-style
     .markdown-source-view.mod-cm6 .cm-url,
     .markdown-source-view.mod-cm6 .cm-link .cm-underline
   ) {
-  text-decoration-line: underline !important;
+  text-decoration-line: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
 }
 
 body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view a.external-link {
-  padding-inline-end: 0 !important;
-  background-image: none !important;
+  padding-inline-end: 0;
+  background-image: none;
 }
 
 body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view .copy-code-button {
-  top: 8px !important;
-  right: 8px !important;
-  display: grid !important;
+  top: 8px;
+  right: 8px;
+  display: grid;
   width: 28px;
   height: 28px;
   place-items: center;
-  margin: 0 !important;
-  padding: 6px !important;
-  border: 0 !important;
-  border-radius: 7px !important;
-  color: var(--text-muted) !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  margin: 0;
+  padding: 6px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text-muted);
+  background: transparent;
+  box-shadow: none;
 }
 
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-preview-view .copy-code-button:is(:hover, :focus-visible) {
-  color: var(--text-normal) !important;
-  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
   outline: none;
 }
 
@@ -1041,14 +1057,14 @@ body.ray-notes-window .cm-content > .cm-line:only-child:empty::before {
 }
 
 /* User-tunable top bar: height comes from --ray-notes-topbar-height above. */
-.ray-notes-toolbar-top {
+body.ray-notes-window > .ray-notes-toolbar.ray-notes-toolbar-top {
   inset: 0 0 auto;
   height: var(--ray-notes-topbar-height);
   align-items: flex-start;
   padding: 12px 12px 0 112px;
   background: transparent;
   cursor: default;
-  -webkit-app-region: drag !important;
+  -webkit-app-region: no-drag;
 }
 
 .ray-notes-title {
@@ -1078,20 +1094,20 @@ body.ray-notes-window .cm-content > .cm-line:only-child:empty::before {
   border: 1px solid var(--ray-notes-chrome-border);
   background: color-mix(in srgb, var(--background-secondary) 82%, transparent);
   box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
-  -webkit-app-region: no-drag !important;
+  -webkit-app-region: no-drag;
   transition: opacity 140ms ease;
-}
-
-.ray-notes-toolbar-actions .ray-notes-properties-close {
-  display: none;
 }
 
 body.ray-notes-window.ray-notes-minimal {
   overflow: hidden;
 }
 
+body.ray-notes-window.ray-notes-mode-transition > * {
+  visibility: hidden;
+}
+
 body.ray-notes-window.ray-notes-minimal > :not(.ray-notes-minimal-card) {
-  display: none !important;
+  display: none;
 }
 
 .ray-notes-minimal-card {
@@ -1143,92 +1159,79 @@ body.ray-notes-window.ray-notes-raycast-style.ray-notes-translucent .ray-notes-m
   -webkit-line-clamp: 2;
 }
 
-body.ray-notes-window.ray-notes-properties-open
-  .ray-notes-toolbar-actions > :not(.ray-notes-properties-close) {
-  display: none;
-}
-
-body.ray-notes-window.ray-notes-properties-open
-  .ray-notes-toolbar-actions .ray-notes-properties-close {
-  display: grid;
-}
-
-body.ray-notes-window.ray-notes-properties-open .ray-notes-toolbar-top {
-  z-index: 1400;
-}
-
-body.ray-notes-window.ray-notes-properties-open .ray-notes-toolbar-bottom {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.ray-notes-properties-overlay {
+.ray-notes-properties-content {
   position: fixed;
-  z-index: 1200;
-  inset: var(--ray-notes-topbar-height) 0 var(--ray-notes-bottom-bar-height);
-  display: grid;
-  align-items: start;
-  padding: 12px;
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-body.ray-notes-window .metadata-container:not(.ray-notes-properties-content) {
-  display: none !important;
-}
-
-.ray-notes-properties-panel {
-  width: 100%;
-  min-height: min(360px, calc(100% - 24px));
-  max-height: calc(100% - 24px);
+  z-index: 890;
+  top: calc(var(--ray-notes-topbar-height) + 8px);
+  right: 24px;
+  left: 24px;
+  display: block;
+  width: auto;
+  min-height: 40px;
+  max-height: min(220px, calc(100vh - var(--ray-notes-topbar-height) - 96px));
   box-sizing: border-box;
-  overflow: visible;
-  border: 1px solid var(--ray-notes-chrome-border);
-  border-radius: 16px;
+  margin: 0;
+  padding: 8px 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border-hover);
+  border-radius: 14px;
   color: var(--text-normal);
   background: var(--ray-notes-layer-background);
   backdrop-filter: var(--ray-notes-layer-backdrop-filter);
   -webkit-backdrop-filter: var(--ray-notes-layer-backdrop-filter);
   box-shadow: var(--ray-notes-layer-shadow);
+  -webkit-app-region: no-drag;
 }
 
-.ray-notes-properties-panel .ray-notes-properties-content {
+body.ray-notes-window
+  .workspace-leaf-content[data-type="markdown"]
+  .metadata-container:not(.ray-notes-properties-content) {
+  display: none !important;
+}
+
+.ray-notes-properties-content {
   --metadata-label-width: clamp(120px, 34%, 240px);
-  display: block !important;
-  width: 100% !important;
-  max-width: none !important;
-  max-height: inherit;
-  box-sizing: border-box;
-  margin: 0 !important;
-  padding: 18px 20px 24px !important;
-  overflow: auto;
-  background: transparent !important;
+  max-width: none;
 }
 
-.ray-notes-properties-panel
+.ray-notes-properties-content
   :is(.metadata-properties, .metadata-property, .metadata-property-key, .metadata-property-value) {
   min-width: 0;
   max-width: none;
 }
 
-.ray-notes-properties-panel .metadata-properties {
+.ray-notes-properties-content .metadata-properties {
   width: 100%;
+  box-sizing: border-box;
+  padding: 2px;
 }
 
-.ray-notes-properties-panel .metadata-property {
+.ray-notes-properties-content .metadata-property {
   gap: 12px;
 }
 
-.ray-notes-properties-panel
+body.ray-notes-window .ray-notes-properties-content
   :is(.metadata-properties-heading, .metadata-properties-title):focus {
-  outline: none !important;
-  box-shadow: none !important;
+  outline: none;
+  box-shadow: none;
 }
 
-.ray-notes-properties-panel
+body.ray-notes-window .ray-notes-properties-content
   :is(.metadata-properties-heading .collapse-indicator, .metadata-properties-heading-icon) {
-  display: none !important;
+  display: none;
+}
+
+body.ray-notes-window .ray-notes-properties-content
+  :is(.metadata-properties-heading, .metadata-properties-title) {
+  display: none;
+}
+
+body.ray-notes-window.ray-notes-properties-visible
+  .workspace .markdown-source-view.mod-cm6 .cm-content,
+body.ray-notes-window.ray-notes-properties-visible
+  .workspace .markdown-preview-view {
+  padding-top: calc(var(--ray-notes-topbar-height) + var(--ray-notes-properties-height, 64px) + 16px);
 }
 
 /* User-tunable bottom bar: height comes from --ray-notes-bottom-bar-height above. */
@@ -1366,7 +1369,7 @@ body.ray-notes-window.ray-notes-platform-windows .ray-notes-toolbar-top {
   opacity: 1;
 }
 
-.ray-notes-toolbar-button {
+body.ray-notes-window .ray-notes-toolbar-button {
   width: 28px;
   height: 28px;
   min-width: 28px;
@@ -1377,32 +1380,33 @@ body.ray-notes-window.ray-notes-platform-windows .ray-notes-toolbar-top {
   border: 0;
   border-radius: 999px;
   color: inherit;
-  background: transparent !important;
-  box-shadow: none !important;
+  background: transparent;
+  box-shadow: none;
   cursor: default;
-  -webkit-app-region: no-drag !important;
+  -webkit-app-region: no-drag;
   transition: color 100ms ease, background-color 100ms ease;
 }
 
-.ray-notes-toolbar-button:hover {
+body.ray-notes-window .ray-notes-toolbar-button:hover {
   color: #f4f4f6;
-  background: var(--ray-notes-chrome-hover) !important;
+  background: var(--ray-notes-chrome-hover);
 }
 
-.ray-notes-toolbar-button:active {
-  background: var(--ray-notes-chrome-active-hover) !important;
+body.ray-notes-window .ray-notes-toolbar-button:active {
+  background: var(--ray-notes-chrome-active-hover);
 }
 
-.ray-notes-toolbar-button.is-active {
+body.ray-notes-window .ray-notes-toolbar-button.is-active {
   color: var(--interactive-accent);
-  background: transparent !important;
+  background: transparent;
 }
 
-.ray-notes-toolbar-trailing .ray-notes-toolbar-button.is-active:hover {
-  background: var(--ray-notes-chrome-hover) !important;
+body.ray-notes-window
+  .ray-notes-toolbar-trailing .ray-notes-toolbar-button.is-active:hover {
+  background: var(--ray-notes-chrome-hover);
 }
 
-.ray-notes-menu-button {
+body.ray-notes-window .ray-notes-toolbar-button.ray-notes-menu-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1456,8 +1460,8 @@ body.ray-notes-window.ray-notes-format-bar-hidden .ray-notes-toolbar-main {
   display: none;
 }
 
-.ray-notes-folder-view .inline-title {
-  display: none !important;
+body .ray-notes-folder-view .inline-title {
+  display: none;
 }
 
 .ray-notes-tooltip,
@@ -1471,7 +1475,7 @@ body.ray-notes-window.ray-notes-format-bar-hidden .ray-notes-toolbar-main {
   border: 1px solid var(--background-modifier-border-hover);
   box-shadow: var(--ray-notes-layer-shadow);
   user-select: none;
-  -webkit-app-region: no-drag !important;
+  -webkit-app-region: no-drag;
   animation: ray-notes-popover-in 110ms ease-out;
 }
 
@@ -1517,7 +1521,7 @@ body.ray-notes-window.ray-notes-format-bar-hidden .ray-notes-toolbar-main {
   border-radius: 12px;
 }
 
-.ray-notes-menu-row {
+body.ray-notes-window .ray-notes-popover .ray-notes-menu-row {
   display: flex;
   width: 100%;
   height: 36px;
@@ -1526,16 +1530,16 @@ body.ray-notes-window.ray-notes-format-bar-hidden .ray-notes-toolbar-main {
   border: 0;
   border-radius: 7px;
   color: var(--text-normal);
-  background: transparent !important;
-  box-shadow: none !important;
+  background: transparent;
+  box-shadow: none;
   font-size: 13px;
   font-weight: 600;
   cursor: default;
 }
 
-.ray-notes-menu-row:hover,
-.ray-notes-menu-row:focus-visible {
-  background: var(--background-modifier-hover) !important;
+body.ray-notes-window .ray-notes-popover .ray-notes-menu-row:hover,
+body.ray-notes-window .ray-notes-popover .ray-notes-menu-row:focus-visible {
+  background: var(--background-modifier-hover);
   outline: none;
 }
 
@@ -1544,7 +1548,7 @@ body.ray-notes-window.ray-notes-format-bar-hidden .ray-notes-toolbar-main {
   padding: 4px;
 }
 
-.ray-notes-toolbar-menu-dense .ray-notes-menu-row {
+body.ray-notes-window .ray-notes-toolbar-menu-dense .ray-notes-menu-row {
   height: 28px;
   padding-inline: 8px;
   font-size: 12px;
@@ -1642,11 +1646,11 @@ body.ray-notes-window.ray-notes-format-bar-hidden .ray-notes-toolbar-main {
   flex: 0 0 auto;
   padding: 6px 10px;
   border-radius: 7px;
-  color: var(--text-on-accent) !important;
+  color: var(--text-on-accent);
   background: var(--interactive-accent);
   font-size: var(--font-ui-small);
   font-weight: 600;
-  text-decoration: none !important;
+  text-decoration: none;
 }
 
 .ray-notes-support-link:hover {
@@ -1654,31 +1658,31 @@ body.ray-notes-window.ray-notes-format-bar-hidden .ray-notes-toolbar-main {
 }
 
 body.ray-notes-window .modal-bg {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 body.ray-notes-window .modal-container {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 body.ray-notes-window > :is(.menu, .popover, .suggestion-container),
 body.ray-notes-window :is(.slash-command, .suggestion-popover) {
   color: var(--text-normal);
-  background: var(--ray-notes-layer-background) !important;
-  backdrop-filter: var(--ray-notes-layer-backdrop-filter) !important;
-  -webkit-backdrop-filter: var(--ray-notes-layer-backdrop-filter) !important;
-  box-shadow: var(--ray-notes-layer-shadow) !important;
+  background: var(--ray-notes-layer-background);
+  backdrop-filter: var(--ray-notes-layer-backdrop-filter);
+  -webkit-backdrop-filter: var(--ray-notes-layer-backdrop-filter);
+  box-shadow: var(--ray-notes-layer-shadow);
 }
 
 body.ray-notes-window.ray-notes-properties-open
   > :is(.menu, .popover, .suggestion-container, .modal-container),
 body.ray-notes-window.ray-notes-properties-open
   :is(.slash-command, .suggestion-popover) {
-  z-index: 1600 !important;
+  z-index: 1600;
 }
 
 body.ray-notes-window :is(.ray-notes-action-panel, .ray-notes-note-switcher) {
@@ -1717,9 +1721,9 @@ body.ray-notes-window
 body.ray-notes-window
   :is(.ray-notes-action-panel, .ray-notes-note-switcher) .prompt-input {
   height: 36px;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   font-size: 14px;
 }
 
@@ -1751,10 +1755,10 @@ body.ray-notes-window .ray-notes-action-panel .ray-notes-action-disabled.is-sele
 .ray-notes-note-switcher .suggestion-item {
   position: relative;
   display: flex;
-  min-height: 48px !important;
+  min-height: 48px;
   align-items: center;
   gap: 8px;
-  padding-block: 6px !important;
+  padding-block: 6px;
 }
 
 .ray-notes-note-switcher .suggestion-item[data-section] {
@@ -1882,16 +1886,16 @@ body.ray-notes-window .ray-notes-action-panel .ray-notes-action-disabled.is-sele
 
 .ray-notes-action-panel .prompt-input {
   height: 42px;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   font-size: 15px;
 }
 
 .ray-notes-action-panel .prompt-input:hover,
 .ray-notes-action-panel .prompt-input:focus {
-  border: 0 !important;
-  box-shadow: none !important;
+  border: 0;
+  box-shadow: none;
 }
 
 .ray-notes-action-panel .suggestion-container {
@@ -1907,13 +1911,13 @@ body.ray-notes-window .ray-notes-action-panel .ray-notes-action-disabled.is-sele
   min-height: 32px;
   align-items: center;
   gap: 8px;
-  padding: 4px 7px !important;
+  padding: 4px 7px;
 }
 
 .ray-notes-action-divider {
   position: relative;
   margin-top: 5px;
-  border-radius: 9px !important;
+  border-radius: 9px;
   overflow: visible;
 }
 

@@ -1,7 +1,7 @@
 {
   "id": "ray-notes",
   "name": "Ray Notes",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "minAppVersion": "1.7.2",
   "description": "Open and edit notes in compact, always-on-top windows with a native Markdown editor.",
   "author": "pnz002",

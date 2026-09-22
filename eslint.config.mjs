@@ -11,6 +11,15 @@ export default defineConfig([
           allowDefaultProject: ["eslint.config.mjs", "esbuild.config.mjs"]
         }
       }
+    },
+    rules: {
+      "obsidianmd/ui/sentence-case": [
+        "warn",
+        {
+          brands: ["Ray Notes", "Raycast", "Ko-fi", "Obsidian", "Markdown", "macOS"],
+          enforceCamelCaseLower: true
+        }
+      ]
     }
   }
 ]);
