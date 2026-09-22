@@ -42,6 +42,9 @@ body.ray-notes-window.ray-notes-raycast-style {
   --ray-code-block-size: 0.9em;
   --ray-code-weight: 400;
   --ray-code-block-line-height: 1.4;
+  --ray-table-text-size: var(--font-text-size);
+  --ray-table-header-size: calc(var(--font-text-size) * 0.9286);
+  --ray-table-line-height: 1.35;
   --ray-list-indent: 14px;
   --ray-list-root-indent: 20px;
   --ray-list-marker-size: 5px;
@@ -81,6 +84,16 @@ body.ray-notes-window.ray-notes-raycast-style {
   --list-spacing: var(--ray-list-item-spacing);
   --blockquote-background-color: transparent;
   --blockquote-border-thickness: var(--ray-blockquote-border-width);
+  --table-text-size: var(--ray-table-text-size);
+  --table-header-size: var(--ray-table-header-size);
+  --table-header-weight: 500;
+  --table-line-height: var(--ray-table-line-height);
+  --table-text-color: var(--text-normal);
+  --table-header-color: var(--text-normal);
+  --table-border-color: var(--background-modifier-border);
+  --table-row-background-hover: var(--background-modifier-hover);
+  --table-row-alt-background: transparent;
+  --table-row-alt-background-hover: var(--background-modifier-hover);
   background: var(--background-primary);
 }
 
@@ -237,8 +250,8 @@ body.ray-notes-window .workspace
   overflow: hidden;
 }
 
-body.ray-notes-window .markdown-source-view.mod-cm6 .cm-editor,
-body.ray-notes-window .markdown-source-view.mod-cm6 .cm-scroller,
+body.ray-notes-window .markdown-source-view.mod-cm6 > .cm-editor,
+body.ray-notes-window .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller,
 body.ray-notes-window .markdown-preview-view {
   background: transparent;
 }
@@ -248,7 +261,8 @@ body.ray-notes-window .markdown-source-view.mod-cm6 {
   padding-block: 0;
 }
 
-body.ray-notes-window .workspace .markdown-source-view.mod-cm6 .cm-scroller {
+body.ray-notes-window .workspace
+  .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller {
   height: 100%;
   margin-block: 0;
   padding-block: 0;
@@ -256,7 +270,7 @@ body.ray-notes-window .workspace .markdown-source-view.mod-cm6 .cm-scroller {
 }
 
 body.ray-notes-window :is(
-  .markdown-source-view.mod-cm6 .cm-scroller,
+  .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller,
   .markdown-preview-view
 ) {
   -webkit-mask-image: linear-gradient(
@@ -279,12 +293,15 @@ body.ray-notes-window :is(
   );
 }
 
-body.ray-notes-window .markdown-source-view.mod-cm6 .cm-scroller::-webkit-scrollbar,
+body.ray-notes-window
+  .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller::-webkit-scrollbar,
 body.ray-notes-window .markdown-preview-view::-webkit-scrollbar {
   display: none;
 }
 
-body.ray-notes-window .workspace .markdown-source-view.mod-cm6 .cm-content,
+body.ray-notes-window .workspace
+  .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller
+  > .cm-sizer > .cm-contentContainer > .cm-content,
 body.ray-notes-window .workspace .markdown-preview-view {
   box-sizing: border-box;
   padding-top: calc(var(--ray-notes-topbar-height) + 8px);
@@ -299,7 +316,8 @@ body.ray-notes-window .markdown-preview-view {
 
 /* User-tunable note canvas: outer content spacing and typography. */
 body.ray-notes-window.ray-notes-raycast-style .workspace
-  .markdown-source-view.mod-cm6 .cm-content,
+  .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller
+  > .cm-sizer > .cm-contentContainer > .cm-content,
 body.ray-notes-window.ray-notes-raycast-style .workspace .markdown-preview-view {
   padding-top: var(--ray-notes-topbar-height);
   padding-inline: clamp(24px, 4vw, 46px);
@@ -314,7 +332,7 @@ body.ray-notes-window.ray-notes-raycast-style .workspace .markdown-preview-view 
 }
 
 body.ray-notes-window.ray-notes-raycast-style .workspace
-  .markdown-source-view.mod-cm6 .cm-scroller {
+  .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller {
   padding-inline: 0;
   scroll-padding-block: var(--ray-notes-topbar-height) var(--ray-notes-bottom-bar-height);
 }
@@ -390,13 +408,14 @@ body.ray-notes-window .document-search .document-search-input input {
   box-shadow: none;
 }
 
-body.ray-notes-window.ray-notes-raycast-style .workspace
-  .markdown-source-view.mod-cm6:has(> .document-search-container) .cm-content {
+body.ray-notes-window.ray-notes-raycast-style.ray-notes-search-visible .workspace
+  .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller
+  > .cm-sizer > .cm-contentContainer > .cm-content {
   padding-top: 72px;
 }
 
-body.ray-notes-window.ray-notes-raycast-style .workspace
-  .markdown-reading-view:has(> .document-search-container) .markdown-preview-view {
+body.ray-notes-window.ray-notes-raycast-style.ray-notes-search-visible .workspace
+  .markdown-reading-view > .markdown-preview-view {
   padding-top: calc(var(--ray-notes-topbar-height) + 12px);
 }
 
@@ -425,6 +444,92 @@ body.ray-notes-window.ray-notes-raycast-style :is(
 ) {
   line-height: var(--ray-line-height);
   letter-spacing: var(--ray-body-letter-spacing);
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-table-widget th {
+  font-size: var(--table-header-size);
+  font-weight: var(--table-header-weight);
+  line-height: var(--table-line-height);
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-table-widget td {
+  font-size: var(--table-text-size);
+  font-weight: var(--ray-body-weight);
+  line-height: var(--table-line-height);
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-table-widget .table-wrapper,
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-table-widget table {
+  width: 100%;
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-table-widget table {
+  table-layout: fixed;
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-table-widget :is(th, td)
+  > .table-cell-wrapper {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-table-widget th
+  > .table-cell-wrapper {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-table-widget :is(th, td)
+  > .table-cell-wrapper > .cm-editor {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 100%;
+  min-height: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-table-widget :is(th, td)
+  > .table-cell-wrapper > .cm-editor :is(
+    .cm-scroller,
+    .cm-sizer,
+    .cm-contentContainer,
+    .cm-content,
+    .cm-line
+  ) {
+  min-width: 0;
+  max-width: 100%;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  background: transparent;
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-table-widget :is(th, td)
+  > .table-cell-wrapper > .cm-editor .cm-content {
+  padding: 0;
 }
 
 body.ray-notes-window.ray-notes-raycast-style :is(
@@ -496,7 +601,6 @@ body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6 .cm-formatting-code {
   padding-block: 0.15em;
   padding-inline: 0.1em 0;
-  border-radius: 0;
   line-height: inherit;
   border-radius: 5px 0 0 5px;
 }
@@ -513,9 +617,17 @@ body.ray-notes-window.ray-notes-raycast-style
   --callout-background-alpha: var(--ray-notes-callout-background-alpha);
   --callout-border-opacity: var(--ray-notes-callout-border-alpha);
   padding: 8px 8px 8px 10px;
-  border: 1px solid hsl(from var(--callout-color) h s l / var(--callout-border-opacity));
+  border: 1px solid color-mix(
+    in srgb,
+    var(--callout-color) calc(var(--callout-border-opacity) * 100%),
+    transparent
+  );
   border-radius: 10px;
-  background: hsl(from var(--callout-color) h s l / var(--callout-background-alpha));
+  background: color-mix(
+    in srgb,
+    var(--callout-color) calc(var(--callout-background-alpha) * 100%),
+    transparent
+  );
   overflow: hidden;
   box-shadow: none;
   filter: none;
@@ -885,7 +997,7 @@ body.ray-notes-window.ray-notes-raycast-style .workspace
   content: none;
 }
 
-body.ray-notes-window.ray-notes-raycast-style
+body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 .cm-line.ray-notes-quote-after-list {
   inset-inline-start: calc(-7.5px + var(--ray-list-indent));
   width: calc(100% - 6.5px);
@@ -957,17 +1069,24 @@ body.ray-notes-window.ray-notes-raycast-style .workspace
 }
 
 body.ray-notes-window.ray-notes-raycast-style
-  .markdown-source-view.mod-cm6 .cm-line:has(br):not(:has(hr)) {
+  .markdown-source-view.mod-cm6 .cm-line.ray-notes-blank-line {
   line-height: 0.6;
 }
 
 body.ray-notes-window.ray-notes-raycast-style
-  .markdown-source-view.mod-cm6 .cm-line:has(br):not(:has(hr)) + .cm-line:has(br):not(:has(hr)) {
+  .markdown-source-view.mod-cm6 .cm-table-widget
+  .cm-line.ray-notes-blank-line {
+  line-height: var(--table-line-height);
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6
+  .cm-line.ray-notes-blank-line + .cm-line.ray-notes-blank-line {
   line-height: var(--ray-line-height);
 }
 
 body.ray-notes-window.ray-notes-raycast-style
-  .markdown-source-view.mod-cm6 .cm-line:has(br):not(:has(hr)) + .hr hr{
+  .markdown-source-view.mod-cm6 .cm-line.ray-notes-blank-line + .hr hr {
   margin-top: 0.5em;
 }
 
@@ -1002,8 +1121,7 @@ body.ray-notes-window.ray-notes-raycast-style
     .markdown-source-view.mod-cm6 .cm-url,
     .markdown-source-view.mod-cm6 .cm-link .cm-underline
   ) {
-  text-decoration-line: underline;
-  text-decoration-thickness: 1px;
+  text-decoration: underline 1px;
   text-underline-offset: 2px;
 }
 
@@ -1178,8 +1296,6 @@ body.ray-notes-window.ray-notes-raycast-style.ray-notes-translucent .ray-notes-m
   border-radius: 14px;
   color: var(--text-normal);
   background: var(--ray-notes-layer-background);
-  backdrop-filter: var(--ray-notes-layer-backdrop-filter);
-  -webkit-backdrop-filter: var(--ray-notes-layer-backdrop-filter);
   box-shadow: var(--ray-notes-layer-shadow);
   -webkit-app-region: no-drag;
 }
@@ -1187,7 +1303,7 @@ body.ray-notes-window.ray-notes-raycast-style.ray-notes-translucent .ray-notes-m
 body.ray-notes-window
   .workspace-leaf-content[data-type="markdown"]
   .metadata-container:not(.ray-notes-properties-content) {
-  display: none !important;
+  display: none;
 }
 
 .ray-notes-properties-content {

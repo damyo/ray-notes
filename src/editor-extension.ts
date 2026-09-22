@@ -49,6 +49,11 @@ function editorDecorations(state: EditorState): DecorationSet {
       };
     } else if (line.text.trim() === "") {
       activeList = null;
+      if (line.text === "") {
+        builder.add(line.from, line.from, Decoration.line({
+          attributes: { class: "ray-notes-blank-line" }
+        }));
+      }
     } else if (activeList) {
       const leading = indentColumns(line.text.match(/^\s*/)?.[0] ?? "");
       if (leading < activeList.contentIndent) {

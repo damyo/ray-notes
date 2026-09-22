@@ -904,13 +904,17 @@ export default class RayNotesPlugin extends Plugin {
     });
     topBar?.addEventListener("pointerup", () => { windowDrag = null; });
     topBar?.addEventListener("pointercancel", () => { windowDrag = null; });
-    const searchObserver = new MutationObserver(() => {
+    const syncSearchVisibility = (): void => {
       const search = doc.querySelector<HTMLElement>(".document-search-container");
-      if (context.propertiesVisible && search?.getClientRects().length) {
+      const visible = Boolean(search?.getClientRects().length);
+      doc.body.toggleClass("ray-notes-search-visible", visible);
+      if (context.propertiesVisible && visible) {
         this.hideInlineProperties(context);
       }
-    });
+    };
+    const searchObserver = new MutationObserver(syncSearchVisibility);
     searchObserver.observe(doc.body, { childList: true, subtree: true });
+    syncSearchVisibility();
     let trafficLightPositionFrame = 0;
     let trafficLightPositionTimer = 0;
     const positionTrafficLights = (): void => {
@@ -1567,7 +1571,7 @@ export default class RayNotesPlugin extends Plugin {
     if (IS_MACOS) {
       this.workspacePinButton = this.addToolbarButton(
         bottomTrailing,
-        "layers",
+        "layers-2",
         "Show on all spaces",
         [],
         () => void this.toggleWorkspacePin(context)

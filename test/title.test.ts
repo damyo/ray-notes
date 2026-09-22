@@ -143,6 +143,20 @@ test("records blockquote depth on the complete quote line", () => {
   assert.equal(className.includes("ray-notes-quote-after-list"), true);
 });
 
+test("marks empty editor rows without styling whitespace-only rows", () => {
+  const state = EditorState.create({
+    doc: "First\n\n  \nSecond",
+    extensions: [rayNotesEditorDecorationsExtension]
+  });
+  const decoratedLines: number[] = [];
+  state.field(rayNotesEditorDecorationsExtension).between(0, state.doc.length, (from, _to, value) => {
+    if (value.spec.attributes?.class === "ray-notes-blank-line") {
+      decoratedLines.push(state.doc.lineAt(from).number);
+    }
+  });
+  assert.deepEqual(decoratedLines, [2]);
+});
+
 test("inserts and replaces heading levels without losing the cursor", () => {
   assert.deepEqual(headingEdit("Notes", 5, 2), { prefix: "## ", replaceEnd: 0, cursorCh: 8 });
   assert.deepEqual(headingEdit("# Notes", 7, 3), { prefix: "### ", replaceEnd: 2, cursorCh: 9 });
