@@ -921,17 +921,18 @@ export default class RayNotesPlugin extends Plugin {
     });
     topBar?.addEventListener("pointerup", () => { windowDrag = null; });
     topBar?.addEventListener("pointercancel", () => { windowDrag = null; });
-    const syncSearchVisibility = (): void => {
+    const syncOverlayVisibility = (): void => {
       const search = doc.querySelector<HTMLElement>(".document-search-container");
       const visible = Boolean(search?.getClientRects().length);
       doc.body.toggleClass("ray-notes-search-visible", visible);
+      doc.body.toggleClass("ray-notes-lightbox-visible", Boolean(doc.querySelector(".lightbox")));
       if (context.propertiesVisible && visible) {
         this.hideInlineProperties(context);
       }
     };
-    const searchObserver = new MutationObserver(syncSearchVisibility);
-    searchObserver.observe(doc.body, { childList: true, subtree: true });
-    syncSearchVisibility();
+    const overlayObserver = new MutationObserver(syncOverlayVisibility);
+    overlayObserver.observe(doc.body, { childList: true, subtree: true });
+    syncOverlayVisibility();
     let trafficLightPositionFrame = 0;
     let trafficLightPositionTimer = 0;
     const positionTrafficLights = (): void => {
@@ -1175,7 +1176,7 @@ export default class RayNotesPlugin extends Plugin {
       stopScrollIndicator();
       context.propertiesResizeObserver?.disconnect();
       context.propertiesResizeObserver = null;
-      searchObserver.disconnect();
+      overlayObserver.disconnect();
       if (trafficLightFrame) win.cancelAnimationFrame(trafficLightFrame);
       if (trafficLightPositionFrame) win.cancelAnimationFrame(trafficLightPositionFrame);
       if (trafficLightPositionTimer) win.clearTimeout(trafficLightPositionTimer);

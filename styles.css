@@ -983,15 +983,21 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-source-view.mod-cm6 .cm-
   padding-block: calc(var(--ray-hr-spacing) / 2);
 }
 
+/* Quote states only change variables; the inline-style override stays in one rule. */
+body.ray-notes-window.ray-notes-raycast-style .markdown-source-view.mod-cm6 {
+  --ray-notes-quote-padding: calc(14.5px + var(--ray-blockquote-text-inset));
+  --ray-notes-quote-indent: -10.5px;
+}
+
 body.ray-notes-window.ray-notes-raycast-style .workspace
-  .markdown-source-view.mod-cm6 .cm-line:is(.HyperMD-quote, .HyperMD-quote-lazy, .ray-notes-quote-lazy) {
+  .markdown-source-view.mod-cm6 .cm-line:is(.HyperMD-quote, .HyperMD-quote-lazy, .ray-notes-quote-depth) {
   position: relative;
   font-size: var(--ray-body-size);
   inset-inline-start: -7.5px;
   width: calc(100% + 7.5px);
   margin-inline-start: 0;
-  padding-inline-start: calc(14.5px + var(--ray-blockquote-text-inset)) !important;
-  text-indent: -10.5px !important;
+  padding-inline-start: var(--ray-notes-quote-padding) !important;
+  text-indent: var(--ray-notes-quote-indent) !important;
   color: var(--text-normal);
   border-block-width: 0;
   background: transparent;
@@ -1001,8 +1007,8 @@ body.ray-notes-window.ray-notes-raycast-style .workspace
 
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6 .cm-line:is(.HyperMD-quote-lazy, .ray-notes-quote-lazy) {
-  padding-inline-start: calc(10.5px + var(--ray-blockquote-text-inset)) !important;
-  text-indent: 0 !important;
+  --ray-notes-quote-padding: calc(10.5px + var(--ray-blockquote-text-inset));
+  --ray-notes-quote-indent: 0;
 }
 
 body.ray-notes-window.ray-notes-raycast-style
@@ -1022,18 +1028,18 @@ body.ray-notes-window.ray-notes-raycast-style
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6.is-live-preview
   .cm-line.ray-notes-quote-depth:not(.cm-active) {
-  padding-inline-start: calc(
+  --ray-notes-quote-padding: calc(
     var(--ray-blockquote-border-width) + var(--ray-blockquote-text-inset)
       + var(--ray-notes-quote-offset) + 1.5px
-  ) !important;
-  text-indent: var(--ray-notes-quote-hidden-offset) !important;
+  );
+  --ray-notes-quote-indent: var(--ray-notes-quote-hidden-offset);
 }
 
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6.is-live-preview
   .cm-line.ray-notes-quote-depth.cm-active {
-  padding-inline-start: calc(var(--ray-notes-quote-offset) + 16px) !important;
-  text-indent: var(--ray-notes-quote-hidden-offset) !important;
+  --ray-notes-quote-padding: calc(var(--ray-notes-quote-offset) + 16px);
+  --ray-notes-quote-indent: var(--ray-notes-quote-hidden-offset);
 }
 
 body.ray-notes-window.ray-notes-raycast-style
@@ -1048,8 +1054,8 @@ body.ray-notes-window.ray-notes-raycast-style
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6.is-live-preview
   .cm-line.ray-notes-quote-depth.ray-notes-quote-lazy {
-  padding-inline-start: calc(var(--ray-notes-quote-offset) + 16px) !important;
-  text-indent: 0 !important;
+  --ray-notes-quote-padding: calc(var(--ray-notes-quote-offset) + 16px);
+  --ray-notes-quote-indent: 0;
 }
 
 body.ray-notes-window.ray-notes-raycast-style .workspace
@@ -1070,7 +1076,7 @@ body.ray-notes-window.ray-notes-raycast-style .workspace
 
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6.is-live-preview
-  .cm-line.HyperMD-quote:not(.cm-active)
+  .cm-line.ray-notes-quote-depth:not(.cm-active)
   .cm-formatting-quote {
   display: inline-block;
   width: 0;
@@ -2177,7 +2183,7 @@ body.ray-notes-window .lightbox {
   z-index: 1200;
 }
 
-body.ray-notes-window:has(.lightbox) > .ray-notes-toolbar {
+body.ray-notes-window.ray-notes-lightbox-visible > .ray-notes-toolbar {
   visibility: hidden;
 }
 
