@@ -9,6 +9,26 @@ Ray Notes는 전용 Obsidian 폴더의 노트를 Raycast Notes에서 영감을 �
 
 > Ray Notes는 독립 프로젝트이며 Raycast와 관련이 없습니다.
 
+## 미리 보기
+
+작은 창에서 Property, 체크리스트, 인용 블록, 테이블을 포함한 Markdown 노트를 편집할 수 있습니다.
+
+<a href="docs/images/ray-notes-property.png"><img src="docs/images/ray-notes-property.png" alt="Property, 체크리스트, 인용 블록, 테이블을 표시한 Ray Notes 노트" width="600"></a>
+
+| Browse Notes | Action Panel |
+| --- | --- |
+| <a href="docs/images/ray-notes-browse.png"><img src="docs/images/ray-notes-browse.png" alt="예시 노트를 검색한 Browse Notes" width="400"></a> | <a href="docs/images/ray-notes-actions.png"><img src="docs/images/ray-notes-actions.png" alt="명령과 단축키를 검색하는 Action Panel" width="400"></a> |
+
+| Find in Note | 서식 도구 |
+| --- | --- |
+| <a href="docs/images/ray-notes-find.png"><img src="docs/images/ray-notes-find.png" alt="노트 위에 표시된 Find 검색창" width="400"></a> | <a href="docs/images/ray-notes-format.png"><img src="docs/images/ray-notes-format.png" alt="Heading 메뉴가 열린 하단 서식 도구" width="400"></a> |
+
+Minimal Mode에서는 노트 제목과 짧은 미리 보기만 표시합니다.
+
+<a href="docs/images/ray-notes-minimal.png"><img src="docs/images/ray-notes-minimal.png" alt="Minimal Mode로 표시한 Ray Notes" width="350"></a>
+
+스크린샷은 macOS에서 예시 노트를 사용하고 **Raycast appearance**와 **Translucent window**를 켠 상태로 촬영했습니다. 이미지를 선택하면 원본 크기로 볼 수 있습니다.
+
 ## 주요 기능
 
 - Obsidian의 ribbon, tab bar, view header, status bar가 없는 간결한 popout
@@ -30,8 +50,6 @@ Ray Notes는 전용 Obsidian 폴더의 노트를 Raycast Notes에서 영감을 �
 ## 설치
 
 ### Community plugins
-
-Obsidian Community directory 등록이 완료된 후 다음과 같이 설치할 수 있습니다.
 
 1. **Settings → Community plugins → Browse**를 엽니다.
 2. **Ray Notes**를 검색합니다.

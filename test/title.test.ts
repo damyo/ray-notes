@@ -18,7 +18,9 @@ import { plainNotePreview, safeFileName, titleFromFirstLine, titleFromLines, wit
 import {
   draggedWindowBounds,
   fittedRestoreBounds,
+  forEachConcurrent,
   formatOpenedAt,
+  normalizeCustomFontSize,
   pointInsideBounds,
   relativeNotePath,
   shortcutAccelerator,
@@ -27,6 +29,12 @@ import {
   usesNewWindowModifier
 } from "../src/window.ts";
 import { rayNotesEditorDecorationsExtension } from "../src/editor-extension.ts";
+
+test("keeps a valid custom font size and falls back to 14px", () => {
+  assert.equal(normalizeCustomFontSize(18), 18);
+  assert.equal(normalizeCustomFontSize(7), 14);
+  assert.equal(normalizeCustomFontSize("invalid"), 14);
+});
 
 test("derives a plain title from formatted first lines", () => {
   assert.equal(titleFromFirstLine("# **Ray Notes**"), "Ray Notes");
@@ -123,7 +131,9 @@ test("records blockquote depth on the complete quote line", () => {
   const depths: string[] = [];
   state.field(rayNotesEditorDecorationsExtension).between(0, state.doc.length, (_from, _to, value) => {
     const style = value.spec.attributes?.style;
-    if (typeof style === "string" && style.includes("quote-depth")) depths.push(style);
+    if (typeof style === "string" && style.includes("quote-depth")) {
+      depths.push(style.replace(/--ray-notes-quote-list-indent: [^;]+; /, ""));
+    }
   });
   assert.deepEqual(depths, [
     "--ray-notes-quote-depth: 1; --ray-notes-quote-offset: 0px; --ray-notes-quote-active-offset: 0px; --ray-notes-quote-marker-offset: 0px; --ray-notes-quote-whitespace-offset: 3.5px; --ray-notes-quote-hidden-offset: -3.5px",
@@ -300,4 +310,19 @@ test("opening the link popover cannot turn the selection into a task", () => {
 test("keeps additional reading-view blank lines measurable", () => {
   assert.deepEqual(extraBlankLineGaps("First\n\nSecond"), [0]);
   assert.deepEqual(extraBlankLineGaps("First\n\n\nSecond\n\n\n\nThird"), [1, 2]);
+});
+
+test("limits background note reads without dropping items", async () => {
+  let active = 0;
+  let peak = 0;
+  const completed: number[] = [];
+  await forEachConcurrent([1, 2, 3, 4, 5], 2, async (item) => {
+    active += 1;
+    peak = Math.max(peak, active);
+    await Promise.resolve();
+    completed.push(item);
+    active -= 1;
+  });
+  assert.equal(peak, 2);
+  assert.deepEqual(completed.sort((a, b) => a - b), [1, 2, 3, 4, 5]);
 });

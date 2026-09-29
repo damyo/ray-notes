@@ -1,10 +1,10 @@
 {
   "id": "ray-notes",
   "name": "Ray Notes",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "minAppVersion": "1.7.2",
   "description": "Open and edit notes in compact, always-on-top windows with a native Markdown editor.",
-  "author": "pnz002",
+  "author": "CJ Kim",
   "authorUrl": "https://github.com/damyo",
   "fundingUrl": "https://ko-fi.com/damyo",
   "helpUrl": "https://github.com/damyo/ray-notes/issues",

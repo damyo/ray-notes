@@ -8,26 +8,42 @@ function indentColumns(value: string): number {
   return value.replace(/\t/g, "    ").length;
 }
 
-function editorDecorations(state: EditorState): DecorationSet {
+export function editorDecorations(state: EditorState): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   let activeList: { contentIndent: number; nesting: number; wideMarker: boolean } | null = null;
+  let continuedQuote: { depth: number; afterList: boolean; listIndent: number } | null = null;
   for (let number = 1; number <= state.doc.lines; number += 1) {
     const line = state.doc.line(number);
     const marker = line.text.match(listMarker);
     const quote = line.text.match(quotePrefix);
+    const startsBlock = /^ {0,3}(?:#{1,6}(?:\s|$)|`{3,}|~{3,}|(?:[-*_]\s*){3,}$)/.test(line.text);
+    const lazyQuote = !quote && continuedQuote !== null
+      && line.text.trim() !== "" && !marker && !startsBlock;
 
     if (quote) {
-      const sourceDepth = (quote[2].match(/>/g) ?? []).length;
-      const depth = sourceDepth;
+      continuedQuote = {
+        depth: (quote[2].match(/>/g) ?? []).length,
+        afterList: activeList !== null,
+        listIndent: activeList ? Math.ceil(activeList.nesting / 4) : 0
+      };
+    } else if (!lazyQuote) {
+      continuedQuote = null;
+    }
+
+    if (continuedQuote) {
+      const depth = continuedQuote.depth;
       const offset = (depth - 1) * 14.5;
       const activeOffset = 0;
-      const markerOffset = (sourceDepth - 1) * 9;
-      const whitespaceOffset = indentColumns(quote[0].replace(/>/g, "")) * 3.5;
+      const markerOffset = (depth - 1) * 9;
+      const whitespaceOffset = quote
+        ? indentColumns(quote[0].replace(/>/g, "")) * 3.5
+        : 0;
       builder.add(line.from, line.from, Decoration.line({
         attributes: {
-          class: `ray-notes-quote-depth${activeList ? " ray-notes-quote-after-list" : ""}`,
+          class: `ray-notes-quote-depth${continuedQuote.afterList ? " ray-notes-quote-after-list" : ""}${lazyQuote ? " ray-notes-quote-lazy" : ""}`,
           style: [
             `--ray-notes-quote-depth: ${depth}`,
+            `--ray-notes-quote-list-indent: ${continuedQuote.listIndent}em`,
             `--ray-notes-quote-offset: ${offset}px`,
             `--ray-notes-quote-active-offset: ${activeOffset}px`,
             `--ray-notes-quote-marker-offset: ${markerOffset}px`,
@@ -93,5 +109,5 @@ export const rayNotesEditorDecorationsExtension = StateField.define<DecorationSe
 
 export const rayNotesEditorExtension = [
   rayNotesEditorDecorationsExtension,
-  EditorView.scrollMargins.of(() => ({ top: 60, bottom: 78 }))
+  EditorView.scrollMargins.of(() => ({ top: 60, bottom: 70 }))
 ];

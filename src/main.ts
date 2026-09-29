@@ -37,7 +37,9 @@ import { plainNotePreview, safeFileName, titleFromLines, withHeadingTitle } from
 import {
   draggedWindowBounds,
   fittedRestoreBounds,
+  forEachConcurrent,
   formatOpenedAt,
+  normalizeCustomFontSize,
   pointInsideBounds,
   relativeNotePath,
   shortcutAccelerator,
@@ -60,6 +62,8 @@ interface RayNotesSettings {
   globalShortcutEnabled: boolean;
   globalShortcut: string;
   raycastStyle: boolean;
+  customFontSizeEnabled: boolean;
+  customFontSize: number;
   translucentWindow: boolean;
   minimizeMainWindow: boolean;
   wasOpen: boolean;
@@ -78,6 +82,8 @@ const DEFAULT_SETTINGS: RayNotesSettings = {
   globalShortcutEnabled: true,
   globalShortcut: "Alt+N",
   raycastStyle: true,
+  customFontSizeEnabled: false,
+  customFontSize: 14,
   translucentWindow: false,
   minimizeMainWindow: true,
   wasOpen: false,
@@ -189,7 +195,8 @@ interface ActionItem {
 
 interface NoteItem {
   file: TFile;
-  content: string;
+  label: string;
+  content: string | null;
   searchText: string;
   current: boolean;
   pinned: boolean;
@@ -385,6 +392,7 @@ class NoteSwitcher extends FuzzySuggestModal<NoteItem> {
   private chosen = false;
   private alternateOpen = false;
   private modifierWindow: Window | null = null;
+  private refreshFrame = 0;
   private readonly handleModifierKeyDown = (event: KeyboardEvent): void => {
     if (event.key === "Alt") this.setAlternateOpen(true);
   };
@@ -401,7 +409,6 @@ class NoteSwitcher extends FuzzySuggestModal<NoteItem> {
   constructor(
     app: App,
     private readonly items: NoteItem[],
-    private readonly folder: string,
     private readonly choose: (file: TFile, openInNewWindow: boolean) => void,
     private readonly togglePin: (file: TFile) => Promise<boolean>,
     private readonly remove: (file: TFile) => Promise<boolean>,
@@ -440,11 +447,6 @@ class NoteSwitcher extends FuzzySuggestModal<NoteItem> {
     });
   }
 
-  private label(item: NoteItem): string {
-    const { file } = item;
-    return file.path.slice(this.folder.length + 1, -file.extension.length - 1);
-  }
-
   renderSuggestion(match: FuzzyMatch<NoteItem>, el: HTMLElement): void {
     const item = match.item;
     if (item.sectionStart) el.dataset.section = item.section;
@@ -452,10 +454,12 @@ class NoteSwitcher extends FuzzySuggestModal<NoteItem> {
     el.toggleClass("ray-notes-pinned-note", item.pinned);
 
     const copy = el.createDiv("ray-notes-note-copy");
-    copy.createSpan({ cls: "ray-notes-note-label", text: this.label(item) });
+    copy.createSpan({ cls: "ray-notes-note-label", text: item.label });
     const detail = copy.createSpan("ray-notes-note-detail");
     const opened = formatOpenedAt(item.openedAt);
-    const characters = `${Array.from(item.content).length.toLocaleString()} Characters`;
+    const characters = item.content === null
+      ? null
+      : `${Array.from(item.content).length.toLocaleString()} Characters`;
     detail.textContent = [opened, characters].filter(Boolean).join(" · ");
 
     const actions = el.createDiv("ray-notes-note-actions");
@@ -518,10 +522,22 @@ class NoteSwitcher extends FuzzySuggestModal<NoteItem> {
     this.modifierWindow?.removeEventListener("keyup", this.handleModifierKeyUp, true);
     this.modifierWindow?.removeEventListener("blur", this.handleModifierBlur);
     this.modifierWindow = null;
+    if (this.refreshFrame) this.inputEl.ownerDocument.defaultView?.cancelAnimationFrame(this.refreshFrame);
+    this.refreshFrame = 0;
     this.inputEl.blur();
     this.inputEl.removeEventListener("keydown", this.handleEscape, true);
     this.imeGuard.destroy();
     this.closed(this.chosen, focusDelay);
+  }
+
+  refreshItemContent(): void {
+    if (!this.inputEl.value.trim() || this.refreshFrame) return;
+    const win = this.inputEl.ownerDocument.defaultView;
+    if (!win) return;
+    this.refreshFrame = win.requestAnimationFrame(() => {
+      this.refreshFrame = 0;
+      this.inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    });
   }
 
   private setAlternateOpen(active: boolean): void {
@@ -671,6 +687,7 @@ export default class RayNotesPlugin extends Plugin {
   async onload(): Promise<void> {
     const stored = (await this.loadData()) as Partial<RayNotesSettings> | null;
     this.settings = Object.assign({}, DEFAULT_SETTINGS, stored);
+    this.settings.customFontSize = normalizeCustomFontSize(this.settings.customFontSize);
     if (!Array.isArray(this.settings.pinnedNotes)) this.settings.pinnedNotes = [];
     if (!this.settings.lastOpened || typeof this.settings.lastOpened !== "object") this.settings.lastOpened = {};
     if (stored?.pathStorageVersion !== 2) {
@@ -1030,6 +1047,17 @@ export default class RayNotesPlugin extends Plugin {
         event.stopImmediatePropagation();
         event.stopPropagation();
         this.hideInlineProperties(context);
+        return;
+      }
+      const lightbox = bareEscape ? doc.querySelector<HTMLElement>(".lightbox") : null;
+      if (lightbox?.getClientRects().length) {
+        const closeButton = lightbox.querySelector<HTMLElement>(".modal-close-button");
+        if (closeButton) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          event.stopPropagation();
+          closeButton.click();
+        }
         return;
       }
       if (bareEscape && (this.closeOpenDocumentSearch(doc)
@@ -1396,6 +1424,10 @@ export default class RayNotesPlugin extends Plugin {
         this.hideInlineProperties(context);
         return;
       }
+      const noteScroller = context.popout.doc.querySelector<HTMLElement>(
+        ".markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller, .markdown-preview-view"
+      );
+      const scrollTop = noteScroller?.scrollTop;
       const metadata = context.leaf.view.containerEl.querySelector<HTMLElement>(".metadata-container");
       if (!metadata) {
         if (attempt < 3) this.syncInlineProperties(context, attempt + 1);
@@ -1427,7 +1459,12 @@ export default class RayNotesPlugin extends Plugin {
       };
       context.propertiesResizeObserver = new ResizeObserver(updateHeight);
       context.propertiesResizeObserver.observe(metadata);
-      context.popout.win.requestAnimationFrame(updateHeight);
+      context.popout.win.requestAnimationFrame(() => {
+        updateHeight();
+        context.popout.win.requestAnimationFrame(() => {
+          if (noteScroller && scrollTop !== undefined) noteScroller.scrollTop = scrollTop;
+        });
+      });
     }, attempt === 0 ? 0 : 50);
   }
 
@@ -2292,6 +2329,12 @@ export default class RayNotesPlugin extends Plugin {
     const body = doc?.body;
     const translucent = this.settings.translucentWindow;
     body?.toggleClass("ray-notes-raycast-style", this.settings.raycastStyle);
+    body?.toggleClass("ray-notes-custom-font-size", this.settings.customFontSizeEnabled);
+    if (this.settings.customFontSizeEnabled) {
+      body?.style.setProperty("--ray-notes-custom-font-size", `${this.settings.customFontSize}px`);
+    } else {
+      body?.style.removeProperty("--ray-notes-custom-font-size");
+    }
     body?.toggleClass("ray-notes-translucent", translucent);
     body?.toggleClass("is-translucent", translucent);
     doc?.documentElement.toggleClass("ray-notes-translucent", translucent);
@@ -2456,7 +2499,7 @@ export default class RayNotesPlugin extends Plugin {
     this.openLayer(panel);
   }
 
-  private async openSwitcher(): Promise<void> {
+  private openSwitcher(): void {
     const files = this.getFiles();
     if (!files.length) {
       new Notice("No notes found");
@@ -2469,13 +2512,13 @@ export default class RayNotesPlugin extends Plugin {
       void this.saveSettings();
     }
     const pinned = new Set(this.settings.pinnedNotes);
-    const contents = await Promise.all(files.map((file) => this.app.vault.cachedRead(file).catch(() => "")));
-    const items = files.map<NoteItem>((file, index) => {
+    const items = files.map<NoteItem>((file) => {
       const label = file.path.slice(this.settings.folder.length + 1, -file.extension.length - 1);
       return {
         file,
-        content: contents[index],
-        searchText: `${label}\n${contents[index]}`,
+        label,
+        content: null,
+        searchText: label,
         current: file.path === currentPath,
         pinned: pinned.has(this.noteKey(file.path)),
         openedAt: this.settings.lastOpened[this.noteKey(file.path)],
@@ -2488,10 +2531,9 @@ export default class RayNotesPlugin extends Plugin {
     switcher = new NoteSwitcher(
       this.app,
       items,
-      this.settings.folder,
       (file, openInNewWindow) => {
         if (openInNewWindow) void this.openFileInNewWindow(file, source);
-        else if (file.path !== currentPath) void this.openFile(file, true, source);
+        else if (file.path !== currentPath) void this.openFileFromSwitcher(file, source);
         else source?.popout.win.setTimeout(() => {
           if (source.leaf.view instanceof MarkdownView) source.leaf.view.editor.focus();
         }, 0);
@@ -2505,6 +2547,33 @@ export default class RayNotesPlugin extends Plugin {
       }
     );
     this.openLayer(switcher);
+    void forEachConcurrent(items, 1, async (item) => {
+      if (this.activeLayer !== switcher) return;
+      const content = await this.app.vault.cachedRead(item.file).catch(() => null);
+      if (content === null || this.activeLayer !== switcher) return;
+      item.content = content;
+      item.searchText = `${item.label}\n${content}`;
+      switcher.refreshItemContent();
+    }).catch((error) => console.warn("Ray Notes could not finish indexing note contents", error));
+  }
+
+  private async openFileFromSwitcher(file: TFile, context: RayNotesWindowContext | null): Promise<void> {
+    if (!context) return;
+    const previousTitle = context.titleEl?.textContent ?? "";
+    const timer = context.popout.win.setTimeout(() => {
+      if (context.titleEl?.textContent !== previousTitle) return;
+      if (context.titleEl) context.titleEl.textContent = `Opening ${file.basename}…`;
+    }, 200);
+    try {
+      await this.openFile(file, true, context);
+    } catch (error) {
+      console.error("Ray Notes could not open note", error);
+      new Notice(`Could not open ${file.basename}`);
+    } finally {
+      context.popout.win.clearTimeout(timer);
+      if (context.leaf.view instanceof MarkdownView) this.updateDerivedTitle(context.leaf.view.editor, context);
+      else if (context.titleEl) context.titleEl.textContent = previousTitle;
+    }
   }
 
   private async togglePinnedNote(file: TFile): Promise<boolean> {
@@ -2876,6 +2945,17 @@ class RayNotesSettingTab extends PluginSettingTab {
         control: { type: "toggle", key: "raycastStyle" }
       },
       {
+        name: "Use custom font size",
+        desc: "Override Obsidian's font size in Ray Notes windows.",
+        control: { type: "toggle", key: "customFontSizeEnabled" }
+      },
+      {
+        name: "Font size",
+        desc: "Used when custom font size is enabled.",
+        visible: () => this.plugin.settings.customFontSizeEnabled,
+        render: (setting) => this.renderFontSizeSetting(setting)
+      },
+      {
         name: "Translucent window",
         desc: "Use translucent backgrounds and macOS vibrancy in notes.",
         control: { type: "toggle", key: "translucentWindow" }
@@ -2914,6 +2994,7 @@ class RayNotesSettingTab extends PluginSettingTab {
       case "visibleOnAllWorkspaces":
       case "globalShortcutEnabled":
       case "raycastStyle":
+      case "customFontSizeEnabled":
       case "translucentWindow":
       case "minimizeMainWindow":
         this.plugin.settings[key] = Boolean(value);
@@ -2925,7 +3006,14 @@ class RayNotesSettingTab extends PluginSettingTab {
         return;
     }
     if (key === "globalShortcutEnabled") this.plugin.updateGlobalShortcutRegistration();
-    if (key === "raycastStyle" || key === "translucentWindow") this.plugin.applyAppearance();
+    if (["raycastStyle", "translucentWindow", "customFontSizeEnabled", "customFontSize"].includes(key)) {
+      this.plugin.applyAppearance();
+    }
+    if (key === "customFontSizeEnabled") {
+      this.setFontSizeSettingVisible();
+      const refresh = Reflect.get(this, "refreshDomState") as (() => void) | undefined;
+      refresh?.call(this);
+    }
     await this.plugin.saveSettings();
   }
 
@@ -2947,6 +3035,47 @@ class RayNotesSettingTab extends PluginSettingTab {
     });
     supportLink.target = "_blank";
     supportLink.rel = "noopener";
+  }
+
+  private renderFontSizeSetting(setting: Setting): void {
+    setting.settingEl.addClass("ray-notes-custom-font-size-setting");
+    setting.settingEl.hidden = !this.plugin.settings.customFontSizeEnabled;
+    setting.addExtraButton((button) => button
+      .setIcon("rotate-ccw")
+      .setTooltip("Reset to 14 px")
+      .onClick(async () => {
+        const size = DEFAULT_SETTINGS.customFontSize;
+        this.plugin.settings.customFontSize = size;
+        const input = setting.controlEl.querySelector<HTMLInputElement>("input");
+        if (input) input.value = String(size);
+        this.plugin.applyAppearance();
+        await this.plugin.saveSettings();
+      }));
+    setting.addText((text) => {
+      text.inputEl.addClass("ray-notes-custom-font-size-input");
+      text.inputEl.type = "number";
+      text.inputEl.min = "8";
+      text.inputEl.max = "72";
+      text.inputEl.step = "1";
+      text.setDisabled(!this.plugin.settings.customFontSizeEnabled);
+      text.setValue(String(this.plugin.settings.customFontSize))
+        .onChange(async (value) => {
+          if (!this.plugin.settings.customFontSizeEnabled) return;
+          const size = Number(value);
+          if (!Number.isInteger(size) || size < 8 || size > 72) return;
+          this.plugin.settings.customFontSize = size;
+          this.plugin.applyAppearance();
+          await this.plugin.saveSettings();
+        });
+    });
+  }
+
+  private setFontSizeSettingVisible(): void {
+    const setting = this.containerEl.querySelector<HTMLElement>(".ray-notes-custom-font-size-setting");
+    if (!setting) return;
+    setting.hidden = !this.plugin.settings.customFontSizeEnabled;
+    const input = setting.querySelector<HTMLInputElement>("input");
+    if (input) input.disabled = !this.plugin.settings.customFontSizeEnabled;
   }
 
   private renderShortcutSetting(shortcutSetting: Setting): void {
@@ -3101,6 +3230,23 @@ class RayNotesSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         })
       );
+
+    new Setting(this.containerEl)
+      .setName("Use custom font size")
+      .setDesc("Override Obsidian's font size in Ray Notes windows.")
+      .addToggle((toggle) =>
+        toggle.setValue(this.plugin.settings.customFontSizeEnabled).onChange(async (value) => {
+          this.plugin.settings.customFontSizeEnabled = value;
+          this.setFontSizeSettingVisible();
+          this.plugin.applyAppearance();
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(this.containerEl)
+      .setName("Font size")
+      .setDesc("Used when custom font size is enabled.")
+      .then((setting) => this.renderFontSizeSetting(setting));
 
     new Setting(this.containerEl)
       .setName("Translucent window")

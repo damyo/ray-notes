@@ -9,6 +9,26 @@ Ray Notes opens notes from a dedicated Obsidian folder in compact, always-on-top
 
 > Ray Notes is an independent project and is not affiliated with Raycast.
 
+## Preview
+
+Edit Markdown in a compact window with file properties, tasks, quotes, and tables.
+
+<a href="docs/images/ray-notes-property.png"><img src="docs/images/ray-notes-property.png" alt="Ray Notes showing file properties, tasks, a quote, and a table" width="600"></a>
+
+| Browse Notes | Action Panel |
+| --- | --- |
+| <a href="docs/images/ray-notes-browse.png"><img src="docs/images/ray-notes-browse.png" alt="Browse Notes filtered to example notes" width="400"></a> | <a href="docs/images/ray-notes-actions.png"><img src="docs/images/ray-notes-actions.png" alt="Action Panel showing searchable commands and keyboard shortcuts" width="400"></a> |
+
+| Find in Note | Formatting controls |
+| --- | --- |
+| <a href="docs/images/ray-notes-find.png"><img src="docs/images/ray-notes-find.png" alt="Find bar above a Markdown note" width="400"></a> | <a href="docs/images/ray-notes-format.png"><img src="docs/images/ray-notes-format.png" alt="Formatting toolbar with the heading menu open" width="400"></a> |
+
+Minimal Mode keeps just the note title and a short preview visible.
+
+<a href="docs/images/ray-notes-minimal.png"><img src="docs/images/ray-notes-minimal.png" alt="Ray Notes in Minimal Mode" width="350"></a>
+
+Screenshots use example notes on macOS with **Raycast appearance** and **Translucent window** enabled. Select an image to view it at full size.
+
 ## Features
 
 - Compact popout windows without Obsidian's ribbon, tab bar, view header, or status bar
@@ -30,8 +50,6 @@ Ray Notes opens notes from a dedicated Obsidian folder in compact, always-on-top
 ## Installation
 
 ### Community plugins
-
-After Ray Notes is accepted into the Obsidian Community directory:
 
 1. Open **Settings → Community plugins → Browse**.
 2. Search for **Ray Notes**.

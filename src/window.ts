@@ -5,6 +5,27 @@ export interface ScreenBounds {
   height: number;
 }
 
+export function normalizeCustomFontSize(value: unknown): number {
+  const size = Number(value);
+  return Number.isInteger(size) && size >= 8 && size <= 72 ? size : 14;
+}
+
+export async function forEachConcurrent<T>(
+  items: readonly T[],
+  limit: number,
+  task: (item: T) => Promise<void>
+): Promise<void> {
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const item = items[next];
+      next += 1;
+      await task(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(Math.max(1, limit), items.length) }, worker));
+}
+
 export function pointInsideBounds(
   point: { x: number; y: number },
   bounds: ScreenBounds,

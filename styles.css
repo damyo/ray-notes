@@ -3,6 +3,8 @@ body.ray-notes-window {
   --header-height: 0px;
   --ray-notes-topbar-height: 60px;
   --ray-notes-bottom-bar-height: 78px;
+  --ray-notes-content-bottom-space: 82px;
+  --ray-notes-reading-bottom-space: 40px;
   --ray-notes-toolbar-fg: rgb(244 244 246 / 72%);
   --ray-notes-toolbar-muted: rgb(156 156 159 / 100%);
   --ray-notes-chrome-border: rgb(255 255 255 / 8%);
@@ -17,7 +19,7 @@ body.ray-notes-window {
 body.ray-notes-window.ray-notes-raycast-style {
   --ray-notes-accent: #ff6161;
   --ray-notes-accent-hover: #ff7777;
-  --ray-body-size: 14px;
+  --ray-body-size: var(--ray-notes-custom-font-size, var(--font-text-size, 14px));
   --ray-body-weight: 400;
   --ray-line-height: 1.42;
   --ray-body-letter-spacing: 0;
@@ -42,11 +44,11 @@ body.ray-notes-window.ray-notes-raycast-style {
   --ray-code-block-size: 0.9em;
   --ray-code-weight: 400;
   --ray-code-block-line-height: 1.4;
-  --ray-table-text-size: var(--font-text-size);
-  --ray-table-header-size: calc(var(--font-text-size) * 0.9286);
+  --ray-table-text-size: var(--ray-notes-custom-font-size, var(--font-text-size));
+  --ray-table-header-size: calc(var(--ray-table-text-size) * 0.9286);
   --ray-table-line-height: 1.35;
-  --ray-list-indent: 14px;
-  --ray-list-root-indent: 20px;
+  --ray-list-indent: var(--ray-body-size);
+  --ray-list-root-indent: 1.43em;
   --ray-list-marker-size: 5px;
   --ray-list-item-spacing: 4px;
   --ray-ordered-marker-width: 4ch;
@@ -67,7 +69,6 @@ body.ray-notes-window.ray-notes-raycast-style {
   --link-unresolved-color: var(--ray-notes-accent);
   --text-selection: rgb(255 97 97 / 24%);
   --blockquote-border-color: var(--ray-notes-accent);
-  --font-text-size: var(--ray-body-size);
   --line-height-normal: var(--ray-line-height);
   --line-height-tight: 1.35;
   --p-spacing: var(--ray-paragraph-spacing);
@@ -121,6 +122,13 @@ body.ray-notes-window.ray-notes-raycast-style.theme-dark {
   --ray-notes-vibrancy-overlay: rgb(14 13 16 / 30%);
   --ray-notes-layer-background: #292829;
   color-scheme: dark;
+}
+
+body.ray-notes-window.ray-notes-raycast-style.theme-dark:not(.ray-notes-translucent) {
+  --background-primary: #2b292a;
+  --background-primary-alt: #262425;
+  --background-secondary: #333132;
+  --background-secondary-alt: #393738;
 }
 
 body.ray-notes-window.ray-notes-raycast-style.theme-light {
@@ -305,13 +313,18 @@ body.ray-notes-window .workspace
 body.ray-notes-window .workspace .markdown-preview-view {
   box-sizing: border-box;
   padding-top: calc(var(--ray-notes-topbar-height) + 8px);
-  padding-bottom: calc(var(--ray-notes-bottom-bar-height) + 12px);
+  padding-bottom: var(--ray-notes-content-bottom-space);
 }
 
 body.ray-notes-window .markdown-preview-view {
+  --ray-notes-content-bottom-space: var(--ray-notes-reading-bottom-space);
   height: 100%;
   margin-block: 0;
   scrollbar-width: none;
+}
+
+body.ray-notes-window.ray-notes-custom-font-size .workspace-leaf-content {
+  --font-text-size: var(--ray-notes-custom-font-size);
 }
 
 /* User-tunable note canvas: outer content spacing and typography. */
@@ -321,7 +334,7 @@ body.ray-notes-window.ray-notes-raycast-style .workspace
 body.ray-notes-window.ray-notes-raycast-style .workspace .markdown-preview-view {
   padding-top: var(--ray-notes-topbar-height);
   padding-inline: clamp(24px, 4vw, 46px);
-  padding-bottom: var(--ray-notes-bottom-bar-height);
+  padding-bottom: var(--ray-notes-content-bottom-space);
   color: var(--text-normal);
   font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
   font-feature-settings: "calt", "kern", "liga", "ss03";
@@ -334,7 +347,14 @@ body.ray-notes-window.ray-notes-raycast-style .workspace .markdown-preview-view 
 body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller {
   padding-inline: 0;
-  scroll-padding-block: var(--ray-notes-topbar-height) var(--ray-notes-bottom-bar-height);
+  scroll-padding-block: var(--ray-notes-topbar-height) var(--ray-notes-content-bottom-space);
+}
+
+/* Obsidian's scroll-past-end extension sets an inline bottom padding. */
+body.ray-notes-window .workspace
+  .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller
+  > .cm-sizer > .cm-contentContainer > .cm-content {
+  padding-bottom: var(--ray-notes-content-bottom-space) !important;
 }
 
 body.ray-notes-window .workspace-leaf-content .document-search-container {
@@ -353,8 +373,6 @@ body.ray-notes-window .document-search {
   padding-inline: 8px;
   border: 1px solid var(--background-modifier-border-hover);
   border-radius: 14px;
-  background: var(--ray-notes-layer-background);
-  box-shadow: var(--ray-notes-layer-shadow);
 }
 
 body.ray-notes-window .document-search-buttons {
@@ -430,10 +448,11 @@ body.ray-notes-window.ray-notes-raycast-style
   margin-inline: 0;
 }
 
-body.ray-notes-window.ray-notes-raycast-style .markdown-reading-view
+body.ray-notes-window .markdown-reading-view
   .markdown-preview-view .markdown-preview-sizer {
   min-height: 0;
-  padding-bottom: 0;
+  /* Obsidian adds half a viewport here as an inline scroll-past-end spacer. */
+  padding-bottom: 0 !important;
 }
 
 body.ray-notes-window.ray-notes-raycast-style :is(
@@ -654,6 +673,7 @@ body.ray-notes-window.ray-notes-raycast-style hr {
 body.ray-notes-window.ray-notes-raycast-style :is(.markdown-preview-view, .markdown-source-view) blockquote {
   margin: 1.15em 0;
   padding: 0 0 0 20px;
+  font-size: var(--ray-body-size);
   border-inline-start: var(--ray-blockquote-border-width) solid var(--ray-notes-accent);
   color: var(--text-normal);
   background: transparent;
@@ -686,6 +706,10 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view :is(ul, ol)
   padding-inline-start: var(--ray-list-root-indent);
 }
 
+body.ray-notes-window.ray-notes-raycast-style .markdown-preview-view :is(ul, ol) :is(ul, ol) {
+  padding-inline-start: var(--ray-list-indent);
+}
+
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-reading-view .markdown-preview-view :is(ul, ol) > li {
   margin-inline-start: 0;
@@ -695,6 +719,12 @@ body.ray-notes-window.ray-notes-raycast-style
    pair inline so wrapped and explicit continuation lines share one text edge.
    Do not override those line properties here; use the variables and marker
    pseudo-elements instead. */
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-line.HyperMD-list-line {
+  position: relative;
+  inset-inline-start: -7.5px;
+  width: calc(100% + 7.5px);
+}
 
 /* User-tunable note format: explicit list continuation alignment.
    First-level continuation rows contain two visible source spaces. Give those
@@ -709,22 +739,16 @@ body.ray-notes-window.ray-notes-raycast-style .workspace
    checkbox, first row, and wrapped rows together. */
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6 .cm-line.HyperMD-list-line-1.HyperMD-task-line {
-  position: relative;
-  inset-inline-start: -7.5px;
-  width: calc(100% + 7.5px);
-  padding-inline-start: 28px !important;
-  text-indent: -28px !important;
+  padding-inline-start: calc(var(--ray-list-indent) + 14px) !important;
+  text-indent: calc(0px - var(--ray-list-indent) - 14px) !important;
 }
 
 /* User-tunable note format: first-level bullet axes. */
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6
   .cm-line.HyperMD-list-line-1:not(.HyperMD-task-line):not(.HyperMD-list-line-nobullet) {
-  position: relative;
-  inset-inline-start: -7.5px;
-  width: calc(100% + 7.5px);
-  padding-inline-start: 29px !important;
-  text-indent: -29px !important;
+  padding-inline-start: calc(var(--ray-list-indent) + 15px) !important;
+  text-indent: calc(0px - var(--ray-list-indent) - 15px) !important;
 }
 
 body.ray-notes-window.ray-notes-raycast-style .workspace
@@ -746,7 +770,27 @@ body.ray-notes-window.ray-notes-raycast-style
   padding-inline-end: 6px;
 }
 
-body.ray-notes-window.ray-notes-raycast-style input.task-list-item-checkbox {
+body.ray-notes-window.ray-notes-raycast-style .workspace
+  :is(
+    .HyperMD-task-line[data-task=""],
+    .HyperMD-task-line[data-task=" "],
+    .HyperMD-task-line[data-task="/"],
+    .HyperMD-task-line[data-task="x" i],
+    .HyperMD-task-line[data-task="-"],
+    .task-list-item[data-task=""],
+    .task-list-item[data-task=" "],
+    .task-list-item[data-task="/"],
+    .task-list-item[data-task="x" i],
+    .task-list-item[data-task="-"]
+  ) input.task-list-item-checkbox,
+body.ray-notes-window.ray-notes-raycast-style
+  input.task-list-item-checkbox:is(
+    [data-task=""],
+    [data-task=" "],
+    [data-task="/"],
+    [data-task="x" i],
+    [data-task="-"]
+  ) {
   width: var(--ray-task-checkbox-size);
   height: var(--ray-task-checkbox-size);
   border-radius: var(--ray-task-checkbox-radius);
@@ -845,10 +889,10 @@ body.ray-notes-window.ray-notes-raycast-style .workspace
 }
 
 body.ray-notes-window.ray-notes-raycast-style
-  .markdown-source-view.mod-cm6 :is(
-    .cm-line.HyperMD-list-line-2,
-    .cm-line.HyperMD-list-line-5,
-    .cm-line.HyperMD-list-line-8
+  .workspace .markdown-source-view.mod-cm6 .cm-line.HyperMD-list-line:is(
+    .HyperMD-list-line-2,
+    .HyperMD-list-line-5,
+    .HyperMD-list-line-8
   ) .list-bullet::after {
   box-sizing: border-box;
   border: 1px solid var(--ray-notes-accent);
@@ -940,8 +984,9 @@ body.ray-notes-window.ray-notes-raycast-style .markdown-source-view.mod-cm6 .cm-
 }
 
 body.ray-notes-window.ray-notes-raycast-style .workspace
-  .markdown-source-view.mod-cm6 .cm-line.HyperMD-quote {
+  .markdown-source-view.mod-cm6 .cm-line:is(.HyperMD-quote, .HyperMD-quote-lazy, .ray-notes-quote-lazy) {
   position: relative;
+  font-size: var(--ray-body-size);
   inset-inline-start: -7.5px;
   width: calc(100% + 7.5px);
   margin-inline-start: 0;
@@ -955,7 +1000,7 @@ body.ray-notes-window.ray-notes-raycast-style .workspace
 }
 
 body.ray-notes-window.ray-notes-raycast-style
-  .markdown-source-view.mod-cm6 .cm-line.HyperMD-quote-lazy {
+  .markdown-source-view.mod-cm6 .cm-line:is(.HyperMD-quote-lazy, .ray-notes-quote-lazy) {
   padding-inline-start: calc(10.5px + var(--ray-blockquote-text-inset)) !important;
   text-indent: 0 !important;
 }
@@ -979,7 +1024,7 @@ body.ray-notes-window.ray-notes-raycast-style
   .cm-line.ray-notes-quote-depth:not(.cm-active) {
   padding-inline-start: calc(
     var(--ray-blockquote-border-width) + var(--ray-blockquote-text-inset)
-      + var(--ray-notes-quote-offset)
+      + var(--ray-notes-quote-offset) + 1.5px
   ) !important;
   text-indent: var(--ray-notes-quote-hidden-offset) !important;
 }
@@ -987,9 +1032,24 @@ body.ray-notes-window.ray-notes-raycast-style
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6.is-live-preview
   .cm-line.ray-notes-quote-depth.cm-active {
-  padding-inline-start: calc(
-    14.5px + var(--ray-blockquote-text-inset) + var(--ray-notes-quote-active-offset)
-  ) !important;
+  padding-inline-start: calc(var(--ray-notes-quote-offset) + 16px) !important;
+  text-indent: var(--ray-notes-quote-hidden-offset) !important;
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6.is-live-preview
+  .cm-line.ray-notes-quote-depth.cm-active .cm-formatting-quote {
+  display: inline-block;
+  width: 0;
+  white-space: nowrap;
+  transform: translateX(-10px);
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6.is-live-preview
+  .cm-line.ray-notes-quote-depth.ray-notes-quote-lazy {
+  padding-inline-start: calc(var(--ray-notes-quote-offset) + 16px) !important;
+  text-indent: 0 !important;
 }
 
 body.ray-notes-window.ray-notes-raycast-style .workspace
@@ -999,8 +1059,8 @@ body.ray-notes-window.ray-notes-raycast-style .workspace
 
 body.ray-notes-window.ray-notes-raycast-style .workspace
   .markdown-source-view.mod-cm6 .cm-line.ray-notes-quote-after-list {
-  inset-inline-start: calc(-7.5px + var(--ray-list-indent));
-  width: calc(100% - 6.5px);
+  inset-inline-start: calc(0.75em + var(--ray-notes-quote-list-indent));
+  width: calc(100% - 0.75em - var(--ray-notes-quote-list-indent));
 }
 
 body.ray-notes-window.ray-notes-raycast-style .workspace
@@ -1295,8 +1355,6 @@ body.ray-notes-window.ray-notes-raycast-style.ray-notes-translucent .ray-notes-m
   border: 1px solid var(--background-modifier-border-hover);
   border-radius: 14px;
   color: var(--text-normal);
-  background: var(--ray-notes-layer-background);
-  box-shadow: var(--ray-notes-layer-shadow);
   -webkit-app-region: no-drag;
 }
 
@@ -1344,10 +1402,23 @@ body.ray-notes-window .ray-notes-properties-content
 }
 
 body.ray-notes-window.ray-notes-properties-visible
-  .workspace .markdown-source-view.mod-cm6 .cm-content,
+  .workspace .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller {
+  overflow-anchor: none;
+}
+
+body.ray-notes-window.ray-notes-properties-visible
+  .workspace .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller
+  > .cm-sizer > .cm-contentContainer > .cm-content,
 body.ray-notes-window.ray-notes-properties-visible
   .workspace .markdown-preview-view {
-  padding-top: calc(var(--ray-notes-topbar-height) + var(--ray-notes-properties-height, 64px) + 16px);
+  padding-top: calc(var(--ray-notes-topbar-height) + var(--ray-notes-properties-height, 64px) + 20px);
+}
+
+body.ray-notes-window :is(.document-search, .ray-notes-properties-content) {
+  background: var(--ray-notes-layer-background);
+  backdrop-filter: var(--ray-notes-layer-backdrop-filter);
+  -webkit-backdrop-filter: var(--ray-notes-layer-backdrop-filter);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
 }
 
 /* User-tunable bottom bar: height comes from --ray-notes-bottom-bar-height above. */
@@ -1719,6 +1790,10 @@ body.ray-notes-window .ray-notes-toolbar-menu-dense .ray-notes-menu-row {
   color: var(--text-error);
 }
 
+.ray-notes-custom-font-size-setting[hidden] {
+  display: none !important;
+}
+
 .ray-notes-support-banner {
   display: flex;
   align-items: center;
@@ -1837,10 +1912,27 @@ body.ray-notes-window
 body.ray-notes-window
   :is(.ray-notes-action-panel, .ray-notes-note-switcher) .prompt-input {
   height: 36px;
+  padding-inline: 10px;
   border: 0;
   background: transparent;
   box-shadow: none;
   font-size: 14px;
+}
+
+body.ray-notes-window
+  :is(.ray-notes-action-panel, .ray-notes-note-switcher) .prompt-input:not(:placeholder-shown) {
+  padding-inline-end: 40px;
+}
+
+body.ray-notes-window
+  :is(.ray-notes-action-panel, .ray-notes-note-switcher) .search-input-clear-button {
+  inset-inline-end: 12px;
+}
+
+body.ray-notes-window
+  :is(.ray-notes-action-panel, .ray-notes-note-switcher)
+  .prompt-input:placeholder-shown ~ .search-input-clear-button {
+  display: none;
 }
 
 body.ray-notes-window
@@ -1888,6 +1980,20 @@ body.ray-notes-window .ray-notes-action-panel .ray-notes-action-disabled.is-sele
   content: attr(data-section);
   font-size: 11px;
   font-weight: 650;
+  pointer-events: none;
+}
+
+.ray-notes-note-switcher .suggestion-item[data-section="Pinned"]
+  ~ .suggestion-item[data-section="Notes"] {
+  margin-top: 51px;
+}
+
+.ray-notes-note-switcher .suggestion-item[data-section="Pinned"]
+  ~ .suggestion-item[data-section="Notes"]::after {
+  position: absolute;
+  inset: -37px 8px auto;
+  border-top: 1px solid var(--background-modifier-border);
+  content: "";
   pointer-events: none;
 }
 
@@ -2067,9 +2173,33 @@ body.ray-notes-window .ray-notes-action-panel .ray-notes-action-disabled.is-sele
   font-size: 11px;
 }
 
+body.ray-notes-window .lightbox {
+  z-index: 1200;
+}
+
+body.ray-notes-window:has(.lightbox) > .ray-notes-toolbar {
+  visibility: hidden;
+}
+
+body.ray-notes-window .lightbox-bg {
+  background: color-mix(in srgb, var(--background-primary) 35%, black);
+}
+
+body.ray-notes-window .lightbox-content {
+  box-sizing: border-box;
+  padding: 48px 0 12px;
+}
+
+body.ray-notes-window .lightbox-titlebar {
+  height: var(--ray-notes-topbar-height);
+  min-height: var(--ray-notes-topbar-height);
+  padding-top: 0;
+}
+
 body.ray-notes-window .lightbox .modal-close-button {
-  top: calc(var(--ray-notes-topbar-height) + 8px);
+  top: calc(var(--ray-notes-topbar-height) / 2);
   inset-inline-end: 12px;
+  transform: translateY(-50%);
 }
 
 @keyframes ray-notes-popover-in {
