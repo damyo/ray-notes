@@ -38,3 +38,16 @@ test("offsets quoted list continuations by their list level", () => {
   }
   assert.deepEqual(indents, ["0em", "1em", "2em", "3em", "4em"]);
 });
+
+test("marks each quoted list paragraph marker without changing its source", () => {
+  const source = "- Parent\n  >First paragraph\n  >Second paragraph";
+  const state = EditorState.create({ doc: source });
+  const markers: string[] = [];
+  editorDecorations(state).between(0, state.doc.length, (from, to, value) => {
+    if (value.spec.class === "ray-notes-quote-marker") {
+      markers.push(`${state.doc.lineAt(from).number}:${state.doc.sliceString(from, to)}`);
+    }
+  });
+  assert.deepEqual(markers, ["2:>", "3:>"]);
+  assert.equal(state.doc.toString(), source);
+});

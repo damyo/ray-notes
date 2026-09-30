@@ -1044,10 +1044,35 @@ body.ray-notes-window.ray-notes-raycast-style
 
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6.is-live-preview
-  .cm-line.ray-notes-quote-depth.cm-active .cm-formatting-quote {
+  .cm-line.ray-notes-quote-depth.cm-active:not(.ray-notes-quote-after-list) .cm-formatting-quote {
   display: inline-block;
   width: 0;
   white-space: nowrap;
+  transform: translateX(-10px);
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6.is-live-preview
+  .cm-line.ray-notes-quote-after-list .ray-notes-quote-marker {
+  display: inline-block;
+  width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Obsidian uses a different indentation span after the first quote paragraph. */
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6.is-live-preview
+  .cm-line.ray-notes-quote-after-list > .cm-hmd-indent-in-quote {
+  display: inline-block;
+  width: calc(var(--ray-notes-quote-list-indent) + 0.56em);
+  white-space: pre;
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6.is-live-preview
+  .cm-line.ray-notes-quote-after-list.cm-active .ray-notes-quote-marker {
+  overflow: visible;
   transform: translateX(-10px);
 }
 

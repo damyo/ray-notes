@@ -148,7 +148,9 @@ test("records blockquote depth on the complete quote line", () => {
   });
   let className = "";
   afterList.field(rayNotesEditorDecorationsExtension).between(0, afterList.doc.length, (from, _to, value) => {
-    if (afterList.doc.lineAt(from).number === 2) className = String(value.spec.attributes?.class);
+    if (afterList.doc.lineAt(from).number === 2 && value.spec.attributes?.class) {
+      className = value.spec.attributes.class;
+    }
   });
   assert.equal(className.includes("ray-notes-quote-after-list"), true);
 });

@@ -92,6 +92,11 @@ export function editorDecorations(state: EditorState): DecorationSet {
         }));
       }
     }
+
+    if (quote && continuedQuote?.afterList) {
+      const markerFrom = line.from + quote[1].length;
+      builder.add(markerFrom, markerFrom + 1, Decoration.mark({ class: "ray-notes-quote-marker" }));
+    }
   }
 
   return builder.finish();
