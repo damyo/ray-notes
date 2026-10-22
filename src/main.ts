@@ -1022,6 +1022,7 @@ export default class RayNotesPlugin extends Plugin {
       this.activateWindow(context);
       const bareEscape = event.key === "Escape"
         && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey;
+      if (bareEscape && (event.isComposing || isImeProcessKey(event))) return;
       if (bareEscape && Date.now() < context.escapeSuppressedUntil) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -1073,6 +1074,7 @@ export default class RayNotesPlugin extends Plugin {
         event.preventDefault();
         return;
       }
+      if (bareEscape && this.shouldDeferEscapeToVim(context)) return;
       if (shouldHideWindowOnEscape({
         key: event.key,
         hasModifier: event.metaKey || event.ctrlKey || event.altKey || event.shiftKey,
@@ -1351,6 +1353,20 @@ export default class RayNotesPlugin extends Plugin {
     };
     context.popout.win.setTimeout(focus, 0);
     context.popout.win.setTimeout(focus, 80);
+  }
+
+  private shouldDeferEscapeToVim(context: RayNotesWindowContext): boolean {
+    const app = this.app as App & { isVimEnabled?(): boolean };
+    if (!app.isVimEnabled?.() || !(context.leaf.view instanceof MarkdownView)) return false;
+    const view = context.leaf.view as MarkdownView & {
+      sourceMode?: {
+        cmEditor?: { cm?: { cm?: { state?: { vim?: { insertMode?: boolean; overwrite?: boolean; visualMode?: boolean } } } } };
+      };
+    };
+    if (!view.editor.hasFocus()) return false;
+    const vim = view.sourceMode?.cmEditor?.cm?.cm?.state?.vim;
+    // Let native Vim handle Esc if its internal state is unavailable.
+    return !vim || typeof vim.insertMode !== "boolean" || vim.insertMode || vim.overwrite === true || vim.visualMode === true;
   }
 
   private hasOpenOverlay(doc: Document): boolean {
