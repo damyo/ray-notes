@@ -721,34 +721,10 @@ body.ray-notes-window.ray-notes-raycast-style
    pseudo-elements instead. */
 body.ray-notes-window.ray-notes-raycast-style
   .markdown-source-view.mod-cm6 .cm-line.HyperMD-list-line {
+  --ray-notes-list-line-shift: -7.5px;
   position: relative;
-  inset-inline-start: -7.5px;
-  width: calc(100% + 7.5px);
-}
-
-/* User-tunable note format: explicit list continuation alignment.
-   First-level continuation rows contain two visible source spaces. Give those
-   rows the remaining inset so their text starts on the shared text axis. */
-body.ray-notes-window.ray-notes-raycast-style .workspace
-  .markdown-source-view.mod-cm6 .cm-line.ray-notes-list-continuation {
-  padding-inline-start: var(--ray-notes-list-continuation-padding) !important;
-  text-indent: var(--ray-notes-list-continuation-indent) !important;
-}
-
-/* User-tunable note format: first-level task axes. The line shift moves the
-   checkbox, first row, and wrapped rows together. */
-body.ray-notes-window.ray-notes-raycast-style
-  .markdown-source-view.mod-cm6 .cm-line.HyperMD-list-line-1.HyperMD-task-line {
-  padding-inline-start: calc(var(--ray-list-indent) + 14px) !important;
-  text-indent: calc(0px - var(--ray-list-indent) - 14px) !important;
-}
-
-/* User-tunable note format: first-level bullet axes. */
-body.ray-notes-window.ray-notes-raycast-style
-  .markdown-source-view.mod-cm6
-  .cm-line.HyperMD-list-line-1:not(.HyperMD-task-line):not(.HyperMD-list-line-nobullet) {
-  padding-inline-start: calc(var(--ray-list-indent) + 15px) !important;
-  text-indent: calc(0px - var(--ray-list-indent) - 15px) !important;
+  inset-inline-start: var(--ray-notes-list-line-shift);
+  width: calc(100% - var(--ray-notes-list-line-shift));
 }
 
 body.ray-notes-window.ray-notes-raycast-style .workspace
@@ -871,8 +847,17 @@ body.ray-notes-window.ray-notes-raycast-style
   text-decoration: none;
 }
 body.ray-notes-window.ray-notes-raycast-style
-  .markdown-source-view.mod-cm6 .cm-line.HyperMD-list-line + .HyperMD-list-line {
+  .markdown-source-view.mod-cm6 .cm-line.HyperMD-list-line
+  + .HyperMD-list-line:not(.HyperMD-list-line-nobullet):not(.ray-notes-list-continuation) {
   padding-top: var(--ray-list-item-spacing);
+}
+
+body.ray-notes-window.ray-notes-raycast-style
+  .markdown-source-view.mod-cm6 .cm-line.ray-notes-list-continuation:not(.ray-notes-quote-depth) {
+  padding-block: 0;
+  /* Move the whole line while preserving its native hanging indent and end edge. */
+  inset-inline-start: calc(var(--ray-notes-list-line-shift) + var(--ray-notes-list-continuation-offset, 0px));
+  width: calc(100% - var(--ray-notes-list-line-shift) - var(--ray-notes-list-continuation-offset, 0px));
 }
 
 body.ray-notes-window.ray-notes-raycast-style .workspace

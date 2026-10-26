@@ -1,7 +1,7 @@
-import { RangeSetBuilder, StateField, type EditorState } from "@codemirror/state";
-import { Decoration, EditorView, type DecorationSet } from "@codemirror/view";
+import { RangeSetBuilder, StateEffect, StateField, type EditorState } from "@codemirror/state";
+import { Decoration, Direction, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 
-const listMarker = /^(\s*)([-+*]|\d+[.)])(\s+)(?:\[[ xX-]\](\s+))?/;
+const listMarker = /^(\s*)([-+*]|\d+[.)])(\s+)(?:\[[^\r\n]\](\s+))?/;
 const quotePrefix = /^(\s*)((?:>\s*)+)/;
 
 function indentColumns(value: string): number {
@@ -10,7 +10,7 @@ function indentColumns(value: string): number {
 
 export function editorDecorations(state: EditorState): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
-  let activeList: { contentIndent: number; nesting: number; wideMarker: boolean } | null = null;
+  let activeList: { contentIndent: number; nesting: number; contentFrom: number } | null = null;
   let continuedQuote: { depth: number; afterList: boolean; listIndent: number } | null = null;
   for (let number = 1; number <= state.doc.lines; number += 1) {
     const line = state.doc.line(number);
@@ -61,7 +61,7 @@ export function editorDecorations(state: EditorState): DecorationSet {
         contentIndent: nesting + marker[2].length + indentColumns(marker[3])
           + (task ? 3 + indentColumns(marker[4]) : 0),
         nesting,
-        wideMarker: task || /^\d/.test(marker[2])
+        contentFrom: line.from + marker[0].length
       };
     } else if (line.text.trim() === "") {
       activeList = null;
@@ -75,19 +75,10 @@ export function editorDecorations(state: EditorState): DecorationSet {
       if (leading < activeList.contentIndent) {
         activeList = null;
       } else {
-        const nestedOffset = Math.floor(activeList.nesting / 2) * 14
-          - Math.max(0, Math.floor((activeList.nesting - 4) / 4)) * 14;
-        const axisCorrection = activeList.wideMarker
-          ? (activeList.nesting ? -2.5 : 4)
-          : (activeList.nesting ? -1.5 : 5);
-        const sourceIndent = leading * 0.25;
         builder.add(line.from, line.from, Decoration.line({
           attributes: {
             class: "ray-notes-list-continuation",
-            style: [
-              `--ray-notes-list-continuation-padding: calc(2em + ${nestedOffset + axisCorrection - 12}px)`,
-              `--ray-notes-list-continuation-indent: -${sourceIndent}em`
-            ].join("; ")
+            "data-ray-notes-list-content-from": String(activeList.contentFrom)
           }
         }));
       }
@@ -112,7 +103,111 @@ export const rayNotesEditorDecorationsExtension = StateField.define<DecorationSe
   provide: (field) => EditorView.decorations.from(field)
 });
 
+type ListAlignmentChange = { from: number; offset: number | undefined };
+const listAlignmentEffect = StateEffect.define<ListAlignmentChange[]>();
+
+export const listAlignmentOffsets = StateField.define<ReadonlyMap<number, number>>({
+  create: () => new Map(),
+  update(offsets, transaction) {
+    if (transaction.docChanged) offsets = new Map();
+    for (const effect of transaction.effects) {
+      if (!effect.is(listAlignmentEffect)) continue;
+      const next = new Map(offsets);
+      for (const { from, offset } of effect.value) {
+        if (offset === undefined) next.delete(from);
+        else next.set(from, offset);
+      }
+      offsets = next;
+    }
+    return offsets;
+  },
+  provide: field => EditorView.decorations.from(field, offsets => Decoration.set(
+    Array.from(offsets, ([from, offset]) => Decoration.line({ attributes: {
+      style: `--ray-notes-list-continuation-offset: ${offset}px`
+    } }).range(from)), true
+  ))
+});
+
+export class ListContinuationAlignment {
+  private readonly widths = new Map<number, number>();
+  private characterWidth = 0;
+  private destroyed = false;
+  private readonly view: EditorView;
+
+  constructor(view: EditorView) {
+    this.view = view;
+    this.schedule();
+  }
+
+  update(update: ViewUpdate): void {
+    if (update.docChanged || this.characterWidth !== this.view.defaultCharacterWidth) this.widths.clear();
+    if (update.docChanged || update.viewportChanged || update.geometryChanged
+      || update.selectionSet || update.focusChanged) this.schedule();
+  }
+
+  destroy(): void {
+    this.destroyed = true;
+  }
+
+  private schedule(): void {
+    this.view.requestMeasure({
+      key: this,
+      read: () => this.measure(),
+      write: (changes) => {
+        const doc = this.view.state.doc;
+        // CodeMirror forbids transactions inside its measurement/update cycle.
+        queueMicrotask(() => {
+          if (this.destroyed || this.view.state.doc !== doc) return;
+          const offsets = this.view.state.field(listAlignmentOffsets);
+          if (changes.some(({ from, offset }) => offsets.get(from) !== offset)) {
+            this.view.dispatch({ effects: listAlignmentEffect.of(changes) });
+          }
+        });
+      }
+    });
+  }
+
+  private contentInset(element: HTMLElement, contentFrom: number): number | undefined {
+    const { view } = this;
+    const caret = view.coordsAtPos(contentFrom, 1);
+    if (!caret) return undefined;
+    const bounds = element.getBoundingClientRect();
+    const width = (view.textDirectionAt(contentFrom) === Direction.RTL
+      ? bounds.right - caret.right : caret.left - bounds.left) / view.scaleX;
+    return Number.isFinite(width) && width >= 0 ? width : undefined;
+  }
+
+  private measure(): ListAlignmentChange[] {
+    const { view } = this;
+    if (!view.dom.ownerDocument.body.matches(".ray-notes-window.ray-notes-raycast-style")) return [];
+    this.characterWidth = view.defaultCharacterWidth;
+    const lines = Array.from(view.contentDOM.querySelectorAll<HTMLElement>(":scope > .cm-line.HyperMD-list-line"));
+    const elements = new Map<number, HTMLElement>();
+    for (const element of lines) elements.set(view.state.doc.lineAt(view.posAtDOM(element)).from, element);
+    for (const [from, element] of elements) {
+      const marker = view.state.doc.lineAt(from).text.match(listMarker);
+      if (!marker || element.classList.contains("ray-notes-quote-depth")) continue;
+      const contentFrom = from + marker[0].length;
+      const width = this.contentInset(element, contentFrom);
+      if (width !== undefined) this.widths.set(contentFrom, width);
+    }
+    return lines.filter(element => element.classList.contains("ray-notes-list-continuation")
+      && !element.classList.contains("ray-notes-quote-depth"))
+      .map(element => {
+        const line = view.state.doc.lineAt(view.posAtDOM(element));
+        const contentFrom = line.from + (line.text.match(/^\s*/)?.[0].length ?? 0);
+        const currentInset = this.contentInset(element, contentFrom);
+        // shortcut: Off-screen parents fall back to native indentation until their first measurement.
+        const parentInset = this.widths.get(Number(element.dataset.rayNotesListContentFrom));
+        return { from: line.from, offset: currentInset !== undefined && parentInset !== undefined
+          ? parentInset - currentInset : undefined };
+      });
+  }
+}
+
 export const rayNotesEditorExtension = [
   rayNotesEditorDecorationsExtension,
+  listAlignmentOffsets,
+  ViewPlugin.fromClass(ListContinuationAlignment),
   EditorView.scrollMargins.of(() => ({ top: 60, bottom: 70 }))
 ];

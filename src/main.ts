@@ -35,8 +35,8 @@ import {
 import { rayNotesEditorExtension } from "./editor-extension";
 import { plainNotePreview, safeFileName, titleFromLines, withHeadingTitle } from "./title";
 import {
+  anchoredWindowBounds,
   draggedWindowBounds,
-  fittedRestoreBounds,
   forEachConcurrent,
   formatOpenedAt,
   normalizeCustomFontSize,
@@ -139,6 +139,7 @@ type ElectronWindow = {
   minimize(): void;
   restore(): void;
   show(): void;
+  showInactive(): void;
   focus(): void;
   blur(): void;
   on(name: "close", listener: (event: { preventDefault(): void }) => void): void;
@@ -155,9 +156,7 @@ type ObsidianCommandManager = {
 };
 
 type ElectronApp = {
-  dock?: {
-    show(): Promise<void>;
-  };
+  setActivationPolicy(policy: "regular" | "accessory"): void;
   on(name: "before-quit", listener: () => void): void;
   off(name: "before-quit", listener: () => void): void;
 };
@@ -1326,33 +1325,38 @@ export default class RayNotesPlugin extends Plugin {
     }
     const nativeWindow = context.nativePopout;
     this.activateWindow(context);
-    if (IS_MACOS && nativeWindow) {
+    context.hidden = false;
+    if (IS_MACOS && nativeWindow && context.visibleOnAllWorkspaces) {
+      this.showPinnedWindow(context, true);
+    } else if (IS_MACOS && nativeWindow) {
+      // Re-register Space membership while ordered out, before revealing on the current Space.
+      nativeWindow.hide();
       nativeWindow.setVisibleOnAllWorkspaces?.(true, {
         visibleOnFullScreen: true,
-        ...(context.visibleOnAllWorkspaces ? {} : { skipTransformProcessType: true })
+        skipTransformProcessType: true
       });
-      nativeWindow.show();
-      nativeWindow.focus();
-      void this.electronApp?.dock?.show();
+      nativeWindow.setAlwaysOnTop(context.alwaysOnTop, "modal-panel");
+      nativeWindow.showInactive();
       if (!context.visibleOnAllWorkspaces) context.popout.win.setTimeout(() => {
+        if (context.visibleOnAllWorkspaces) return;
         nativeWindow.setVisibleOnAllWorkspaces?.(false, {
           visibleOnFullScreen: true,
           skipTransformProcessType: true
         });
+        nativeWindow.setAlwaysOnTop(context.alwaysOnTop, "modal-panel");
       }, 120);
     } else {
       nativeWindow?.show();
       nativeWindow?.focus();
       if (!nativeWindow) context.popout.win.focus();
     }
-    context.hidden = false;
     const focus = (): void => {
-      nativeWindow?.focus();
-      context.popout.win.focus();
+      if (context.hidden) return;
+      if (!IS_MACOS || !context.visibleOnAllWorkspaces) nativeWindow?.focus();
+      if (!nativeWindow) context.popout.win.focus();
       if (context.leaf.view instanceof MarkdownView) context.leaf.view.editor.focus();
     };
     context.popout.win.setTimeout(focus, 0);
-    context.popout.win.setTimeout(focus, 80);
   }
 
   private shouldDeferEscapeToVim(context: RayNotesWindowContext): boolean {
@@ -1549,14 +1553,22 @@ export default class RayNotesPlugin extends Plugin {
       nativeWindow.setMovable?.(true);
       nativeWindow.setMinimumSize?.(MIN_WINDOW_WIDTH, 240);
       this.setTrafficLightsVisible(nativeWindow, false);
-      nativeWindow.setAlwaysOnTop(context.alwaysOnTop, "modal-panel");
       if (IS_MACOS) {
-        nativeWindow.setVisibleOnAllWorkspaces?.(context.visibleOnAllWorkspaces, {
-          visibleOnFullScreen: true,
-          ...(context.visibleOnAllWorkspaces ? {} : { skipTransformProcessType: true })
-        });
-        await this.electronApp?.dock?.show();
+        nativeWindow.hide();
+        // Register fullscreen capability once; toggles must not reclassify the whole app.
+        try {
+          this.electronApp?.setActivationPolicy("accessory");
+          nativeWindow.setVisibleOnAllWorkspaces?.(context.visibleOnAllWorkspaces, {
+            visibleOnFullScreen: true,
+            skipTransformProcessType: true
+          });
+          nativeWindow.setAlwaysOnTop(context.alwaysOnTop, "modal-panel");
+          if (!context.hidden) nativeWindow.showInactive();
+        } finally {
+          this.electronApp?.setActivationPolicy("regular");
+        }
       }
+      nativeWindow.setAlwaysOnTop(context.alwaysOnTop, "modal-panel");
       if (context.alwaysOnTop) nativeWindow.moveTop?.();
       this.syncWindowControls(context);
     } catch (error) {
@@ -1645,20 +1657,15 @@ export default class RayNotesPlugin extends Plugin {
   }
 
   private syncWindowControls(context: RayNotesWindowContext): void {
-    const nativeWindow = context.nativePopout;
-    if (!nativeWindow) return;
-    context.alwaysOnTop = nativeWindow.isAlwaysOnTop?.() ?? context.alwaysOnTop;
-    if (IS_MACOS && !context.hidden) {
-      context.visibleOnAllWorkspaces = nativeWindow.isVisibleOnAllWorkspaces?.()
-        ?? context.visibleOnAllWorkspaces;
-    }
+    // macOS reports transient native flags during window/Space transitions.
+    // Keep the user's requested state authoritative, including temporary all-Space shows.
     this.updateToggleButton(context.alwaysOnTopButton, context.alwaysOnTop);
     this.updateToggleButton(context.workspacePinButton, context.visibleOnAllWorkspaces);
   }
 
   private toggleAlwaysOnTop(context = this.activeWindow): void {
     if (!context) return;
-    context.alwaysOnTop = !(context.nativePopout?.isAlwaysOnTop?.() ?? context.alwaysOnTop);
+    context.alwaysOnTop = !context.alwaysOnTop;
     context.nativePopout?.setAlwaysOnTop(context.alwaysOnTop, "modal-panel");
     if (context.alwaysOnTop) context.nativePopout?.moveTop?.();
     this.updateToggleButton(context.alwaysOnTopButton, context.alwaysOnTop);
@@ -1670,6 +1677,8 @@ export default class RayNotesPlugin extends Plugin {
     const { body } = context.popout.doc;
     const win = context.popout.win;
     if (body.hasClass("ray-notes-mode-transition")) return;
+    const screen = (win as ElectronBridgeWindow).require?.("electron").remote?.screen
+      ?? (window as ElectronBridgeWindow).require?.("electron").remote?.screen;
     body.addClass("ray-notes-mode-transition");
     nativeWindow.setOpacity?.(0);
     if (context.minimal) {
@@ -1680,11 +1689,9 @@ export default class RayNotesPlugin extends Plugin {
         nativeWindow.setResizable?.(true);
         nativeWindow.setMinimumSize?.(MIN_WINDOW_WIDTH, 240);
         if (normal) {
-          const screen = (win as ElectronBridgeWindow).require?.("electron").remote?.screen
-            ?? (window as ElectronBridgeWindow).require?.("electron").remote?.screen;
           const workArea = current ? screen?.getDisplayMatching?.(current).workArea : null;
           nativeWindow.setBounds?.(current && workArea
-            ? fittedRestoreBounds(current, normal, workArea)
+            ? anchoredWindowBounds(current, normal, workArea)
             : {
                 x: current?.x ?? normal.x,
                 y: current?.y ?? normal.y,
@@ -1768,7 +1775,11 @@ export default class RayNotesPlugin extends Plugin {
       this.setTrafficLightsVisible(nativeWindow, false);
       nativeWindow.setMinimumSize?.(280, 76);
       nativeWindow.setResizable?.(false);
-      nativeWindow.setBounds?.({ width: 300, height: 82 });
+      const size = { width: 300, height: 82 };
+      const workArea = screen?.getDisplayMatching?.(context.normalBounds).workArea;
+      nativeWindow.setBounds?.(workArea
+        ? anchoredWindowBounds(context.normalBounds, size, workArea)
+        : size);
       win.setTimeout(() => {
         (context.popout.doc.activeElement as HTMLElement | null)?.blur();
         nativeWindow.setFocusable?.(false);
@@ -1786,19 +1797,45 @@ export default class RayNotesPlugin extends Plugin {
     context.minimalEl.querySelector<HTMLElement>(".ray-notes-minimal-body")!.textContent = preview.body || "Empty note";
   }
 
+  private showPinnedWindow(context: RayNotesWindowContext, focus = false): void {
+    const nativeWindow = context.nativePopout;
+    if (!nativeWindow || context.hidden || context.popout.win.closed) return;
+    nativeWindow.setVisibleOnAllWorkspaces?.(true, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true
+    });
+    nativeWindow.setAlwaysOnTop(context.alwaysOnTop, "modal-panel");
+    nativeWindow.showInactive();
+    if (focus) nativeWindow.focus();
+  }
+
   private async toggleWorkspacePin(context = this.activeWindow): Promise<void> {
     if (!IS_MACOS || !context) return;
-    context.visibleOnAllWorkspaces = !(
-      context.nativePopout?.isVisibleOnAllWorkspaces?.() ?? context.visibleOnAllWorkspaces
-    );
-    context.nativePopout?.setVisibleOnAllWorkspaces?.(context.visibleOnAllWorkspaces, {
-      visibleOnFullScreen: true,
-      ...(context.visibleOnAllWorkspaces ? {} : { skipTransformProcessType: true })
-    });
-    await this.electronApp?.dock?.show();
+    context.visibleOnAllWorkspaces = !context.visibleOnAllWorkspaces;
+    const nativeWindow = context.nativePopout;
     this.settings.visibleOnAllWorkspaces = context.visibleOnAllWorkspaces;
-    await this.saveSettings();
     this.updateToggleButton(context.workspacePinButton, context.visibleOnAllWorkspaces);
+    if (context.visibleOnAllWorkspaces && !context.hidden) {
+      this.showPinnedWindow(context);
+      await this.saveSettings();
+      return;
+    }
+    if (!context.visibleOnAllWorkspaces && !context.hidden) {
+      // Anchor the pinned window on the current Space before removing all-Space membership.
+      nativeWindow?.show();
+      nativeWindow?.focus();
+    }
+    nativeWindow?.setVisibleOnAllWorkspaces?.(context.visibleOnAllWorkspaces, {
+      // Keep the fullscreen role even while membership is restricted to one Space.
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true
+    });
+    nativeWindow?.setAlwaysOnTop(context.alwaysOnTop, "modal-panel");
+    if (!context.hidden) {
+      nativeWindow?.showInactive();
+      if (context.alwaysOnTop) nativeWindow?.moveTop?.();
+    }
+    await this.saveSettings();
   }
 
   private addToolbarButton(

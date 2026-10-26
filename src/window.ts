@@ -52,24 +52,20 @@ export function draggedWindowBounds(
   };
 }
 
-export function fittedRestoreBounds(
-  minimal: ScreenBounds,
-  normal: Pick<ScreenBounds, "width" | "height">,
+export function anchoredWindowBounds(
+  current: ScreenBounds,
+  size: Pick<ScreenBounds, "width" | "height">,
   workArea: ScreenBounds
 ): ScreenBounds {
-  const right = workArea.x + workArea.width;
-  const bottom = workArea.y + workArea.height;
-  const x = minimal.x + normal.width > right
-    ? minimal.x + minimal.width - normal.width
-    : minimal.x;
-  const y = minimal.y + normal.height > bottom
-    ? minimal.y + minimal.height - normal.height
-    : minimal.y;
+  const right = current.x + current.width / 2 > workArea.x + workArea.width / 2;
+  const bottom = current.y + current.height / 2 > workArea.y + workArea.height / 2;
+  const x = right ? current.x + current.width - size.width : current.x;
+  const y = bottom ? current.y + current.height - size.height : current.y;
   return {
-    x: Math.min(Math.max(workArea.x, workArea.x + workArea.width - normal.width), Math.max(workArea.x, x)),
-    y: Math.min(Math.max(workArea.y, workArea.y + workArea.height - normal.height), Math.max(workArea.y, y)),
-    width: normal.width,
-    height: normal.height
+    x: Math.min(Math.max(workArea.x, workArea.x + workArea.width - size.width), Math.max(workArea.x, x)),
+    y: Math.min(Math.max(workArea.y, workArea.y + workArea.height - size.height), Math.max(workArea.y, y)),
+    width: size.width,
+    height: size.height
   };
 }
 

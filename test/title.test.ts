@@ -16,8 +16,8 @@ import {
 } from "../src/editor.ts";
 import { plainNotePreview, safeFileName, titleFromFirstLine, titleFromLines, withHeadingTitle } from "../src/title.ts";
 import {
+  anchoredWindowBounds,
   draggedWindowBounds,
-  fittedRestoreBounds,
   forEachConcurrent,
   formatOpenedAt,
   normalizeCustomFontSize,
@@ -109,18 +109,13 @@ test("decorates list continuation lines without touching list item lines", () =>
   });
   const decorations = state.field(rayNotesEditorDecorationsExtension);
   const decoratedLines: number[] = [];
-  const styles: string[] = [];
   decorations.between(0, state.doc.length, (from, _to, value) => {
     decoratedLines.push(state.doc.lineAt(from).number);
-    styles.push(String(value.spec.attributes?.style));
+    assert.equal(value.spec.attributes?.class, "ray-notes-list-continuation");
+    assert.equal(value.spec.attributes?.style, undefined,
+      "Obsidian must retain ownership of measured list indentation");
   });
   assert.deepEqual(decoratedLines, [2, 4, 6, 8, 10, 12]);
-  assert.equal(styles[0].includes("calc(2em + -7px)"), true);
-  assert.equal(styles[1].includes("calc(2em + 0.5px)"), true);
-  assert.equal(styles[2].includes("calc(2em + -8px)"), true);
-  assert.equal(styles[3].includes("calc(2em + -0.5px)"), true);
-  assert.equal(styles[4].includes("calc(2em + -8px)"), true);
-  assert.equal(styles[5].includes("calc(2em + 13.5px)"), true);
 });
 
 test("records blockquote depth on the complete quote line", () => {
@@ -213,19 +208,44 @@ test("moves a minimal window only after a drag begins", () => {
   });
 });
 
-test("keeps the top-left restore anchor unless the window would leave the screen", () => {
+test("shrinks and restores at the nearest corner in each display quadrant", () => {
+  const workArea = { x: 0, y: 24, width: 1440, height: 876 };
+  const size = { width: 300, height: 82 };
+  const cases = [
+    { x: 20, y: 40, minimalX: 20, minimalY: 40 },
+    { x: 800, y: 40, minimalX: 1120, minimalY: 40 },
+    { x: 20, y: 360, minimalX: 20, minimalY: 798 },
+    { x: 800, y: 360, minimalX: 1120, minimalY: 798 }
+  ];
+  for (const { x, y, minimalX, minimalY } of cases) {
+    const normal = { x, y, width: 620, height: 520 };
+    const minimal = anchoredWindowBounds(normal, size, workArea);
+    assert.deepEqual(minimal, { x: minimalX, y: minimalY, ...size });
+    assert.deepEqual(anchoredWindowBounds(minimal, normal, workArea), normal);
+  }
+});
+
+test("anchors against the matched display when its coordinates are negative", () => {
+  const workArea = { x: -1440, y: -900, width: 1440, height: 900 };
+  const normal = { x: -640, y: -540, width: 620, height: 520 };
+  const minimal = anchoredWindowBounds(normal, { width: 300, height: 82 }, workArea);
+  assert.deepEqual(minimal, { x: -320, y: -102, width: 300, height: 82 });
+  assert.deepEqual(anchoredWindowBounds(minimal, normal, workArea), normal);
+});
+
+test("keeps restored bounds inside the display work area", () => {
   const workArea = { x: 0, y: 0, width: 1440, height: 900 };
   const normal = { width: 620, height: 520 };
   assert.deepEqual(
-    fittedRestoreBounds({ x: 500, y: 200, width: 300, height: 82 }, normal, workArea),
+    anchoredWindowBounds({ x: 500, y: 200, width: 300, height: 82 }, normal, workArea),
     { x: 500, y: 200, width: 620, height: 520 }
   );
   assert.deepEqual(
-    fittedRestoreBounds({ x: 1120, y: 20, width: 300, height: 82 }, normal, workArea),
+    anchoredWindowBounds({ x: 1120, y: 20, width: 300, height: 82 }, normal, workArea),
     { x: 800, y: 20, width: 620, height: 520 }
   );
   assert.deepEqual(
-    fittedRestoreBounds({ x: 20, y: 798, width: 300, height: 82 }, normal, workArea),
+    anchoredWindowBounds({ x: 20, y: 798, width: 300, height: 82 }, normal, workArea),
     { x: 20, y: 360, width: 620, height: 520 }
   );
 });
